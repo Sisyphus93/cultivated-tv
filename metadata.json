@@ -1,0 +1,5 @@
+{
+  "name": "Cultivated TV",
+  "description": "A premium discovery engine for high-rated TV series using TMDb.",
+  "requestFramePermissions": []
+}
