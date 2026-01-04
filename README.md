@@ -5,7 +5,6 @@
 [**🚀 Launch App**](https://cultivated-tv.vercel.app/)
 
 ![App Screenshot](https://raw.githubusercontent.com/Sisyphus93/cultivated-tv/refs/heads/main/homepage.jpg)
-*(Replace this line with a screenshot of your dashboard for maximum impact)*
 
 ## 🧐 What is this?
 **Cultivated TV** is a custom-built discovery engine designed to replace the standard Stremio browsing experience. It focuses on deep filtering, data transparency, and binge planning.
