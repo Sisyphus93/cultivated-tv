@@ -93,10 +93,18 @@ const App: React.FC = () => {
     return () => clearTimeout(timer);
   }, [minVotes, minRating, yearRange, viewMode]);
 
-  // Check local storage for key on mount (Changed from sessionStorage)
+  // Check local storage for key on mount AND migrate from sessionStorage if needed
   useEffect(() => {
-    const storedKey = localStorage.getItem('tmdb_api_key');
-    if (storedKey) setApiKey(storedKey);
+    const localKey = localStorage.getItem('tmdb_api_key');
+    const sessionKey = sessionStorage.getItem('tmdb_api_key');
+
+    if (localKey) {
+      setApiKey(localKey);
+    } else if (sessionKey) {
+      // Migrate legacy key to new storage
+      localStorage.setItem('tmdb_api_key', sessionKey);
+      setApiKey(sessionKey);
+    }
   }, []);
 
   const handleSetKey = (key: string) => {
@@ -320,7 +328,7 @@ const App: React.FC = () => {
              <button 
                 onClick={() => {
                     setApiKey(null);
-                    localStorage.removeItem('tmdb_api_key'); // changed from sessionStorage
+                    localStorage.removeItem('tmdb_api_key'); 
                 }}
                 className="text-xs text-gray-700 hover:text-white uppercase font-mono tracking-widest transition-colors"
              >
