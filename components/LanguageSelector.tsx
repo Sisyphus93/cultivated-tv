@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Globe, Search, Check, ChevronDown } from 'lucide-react';
+import { Globe, Search, Check } from 'lucide-react';
 import { ALL_LANGUAGES, PRIORITY_LANGUAGES } from '../constants';
 
 interface LanguageSelectorProps {

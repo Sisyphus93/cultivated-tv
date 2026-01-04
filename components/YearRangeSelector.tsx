@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Calendar } from 'lucide-react';
 
 interface YearRangeSelectorProps {
   minYear: number;

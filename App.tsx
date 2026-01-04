@@ -6,7 +6,7 @@ import { LanguageSelector } from './components/LanguageSelector';
 import { SortSelector } from './components/SortSelector';
 import { YearRangeSelector } from './components/YearRangeSelector';
 import { discoverShows, searchShows } from './services/tmdbService';
-import { TVShow, WatchlistItem } from './types';
+import { TVShow } from './types';
 import { FILTER_CONFIG, POPULAR_GENRES, WATCHLIST_SORT_OPTIONS } from './constants';
 import { useWatchlist } from './hooks/useWatchlist';
 
@@ -562,7 +562,7 @@ const App: React.FC = () => {
 
             {/* GENRE LIST: Static Flex Container */}
             <div className="flex flex-wrap gap-2 items-center">
-              {POPULAR_GENRES.map((genre, idx) => {
+              {POPULAR_GENRES.map((genre) => {
                 const isIncluded = includedGenres.includes(genre.id);
                 const isExcluded = excludedGenres.includes(genre.id);
                 
