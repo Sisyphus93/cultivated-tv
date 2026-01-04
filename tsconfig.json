@@ -17,7 +17,7 @@
     /* Types */
     "types": ["vite/client", "node"],
 
-    /* Linting */
+    /* Linting - Safety Net */
     "strict": true,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
