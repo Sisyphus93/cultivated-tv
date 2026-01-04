@@ -89,13 +89,10 @@ export const SortSelector: React.FC<SortSelectorProps> = ({ selectedSort, onSele
 
                     {/* Tooltip */}
                     {isPopularity && showTooltip && (
-                      <div className="absolute z-[60] bg-gray-900 border border-gray-700 p-2 shadow-xl w-full right-0 top-full mt-1 md:w-48 md:top-0 md:right-full md:mr-2 md:mt-0">
+                      <div className="absolute z-[60] bg-gray-900 border border-gray-700 p-2 shadow-xl w-full right-0 top-full mt-1">
                          <div className="relative">
-                           {/* Desktop Arrow (Right pointing -> towards item) */}
-                           <div className="hidden md:block absolute left-full top-2 -ml-px border-4 border-transparent border-l-gray-700" />
-                           
-                           {/* Mobile Arrow (Up pointing -> towards item) */}
-                           <div className="md:hidden absolute bottom-full right-4 -mb-px border-4 border-transparent border-b-gray-700" />
+                           {/* Arrow (Up pointing -> towards item) */}
+                           <div className="absolute bottom-full right-4 -mb-px border-4 border-transparent border-b-gray-700" />
                            
                            <p className="text-[10px] text-gray-300 normal-case leading-relaxed font-sans">
                              Based on views, votes, release date, and social trends.
