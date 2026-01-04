@@ -21,6 +21,12 @@ export const YearRangeSelector: React.FC<YearRangeSelectorProps> = ({
   const [localRange, setLocalRange] = useState<[number, number]>(selectedRange);
   const [isDragging, setIsDragging] = useState<'min' | 'max' | null>(null);
 
+  // Keep a ref of the latest range to access in event listeners without re-binding them
+  const rangeRef = useRef(localRange);
+  useEffect(() => {
+    rangeRef.current = localRange;
+  }, [localRange]);
+
   // Sync props to local state when not dragging
   useEffect(() => {
     if (!isDragging) {
@@ -39,17 +45,22 @@ export const YearRangeSelector: React.FC<YearRangeSelectorProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Drag Logic
-  const handleMouseDown = (type: 'min' | 'max') => (e: React.MouseEvent) => {
+  // Drag Start (Mouse & Touch)
+  const handleDragStart = (type: 'min' | 'max') => (e: React.MouseEvent | React.TouchEvent) => {
     e.stopPropagation();
+    // Prevent default only on touch to stop potential emulated mouse events or scrolling issues initially
+    if ('touches' in e) {
+        // Optional: e.preventDefault(); 
+    }
     setIsDragging(type);
   };
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
+  // Unified Move Logic
+  const updatePosition = useCallback((clientX: number) => {
     if (!isDragging || !trackRef.current) return;
 
     const rect = trackRef.current.getBoundingClientRect();
-    const percent = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 1);
+    const percent = Math.min(Math.max((clientX - rect.left) / rect.width, 0), 1);
     const totalYears = maxYear - minYear;
     const yearValue = Math.round(minYear + (percent * totalYears));
 
@@ -65,23 +76,38 @@ export const YearRangeSelector: React.FC<YearRangeSelectorProps> = ({
     });
   }, [isDragging, minYear, maxYear]);
 
-  const handleMouseUp = useCallback(() => {
-    if (isDragging) {
-      setIsDragging(null);
-      onChange(localRange); // Commit change
-    }
-  }, [isDragging, localRange, onChange]);
-
+  // Global Listeners for Move/End
   useEffect(() => {
-    if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-    }
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+    if (!isDragging) return;
+
+    const onMouseMove = (e: MouseEvent) => {
+      e.preventDefault();
+      updatePosition(e.clientX);
     };
-  }, [isDragging, handleMouseMove, handleMouseUp]);
+
+    const onTouchMove = (e: TouchEvent) => {
+      e.preventDefault(); // Prevent scrolling while dragging
+      updatePosition(e.touches[0].clientX);
+    };
+
+    const onEnd = () => {
+      setIsDragging(null);
+      onChange(rangeRef.current); // Commit change using the ref
+    };
+
+    // Add listeners (passive: false is important for touchmove to allow preventDefault)
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onEnd);
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('touchend', onEnd);
+
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onEnd);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onEnd);
+    };
+  }, [isDragging, updatePosition, onChange]);
 
   // Calculate percentages for UI
   const getPercent = (value: number) => {
@@ -111,7 +137,7 @@ export const YearRangeSelector: React.FC<YearRangeSelectorProps> = ({
              <span>{maxYear}</span>
           </div>
 
-          <div className="relative h-6 flex items-center select-none" ref={trackRef}>
+          <div className="relative h-6 flex items-center select-none touch-none" ref={trackRef}>
             {/* Track Background */}
             <div className="absolute left-0 right-0 h-1 bg-gray-800 rounded-full" />
             
@@ -123,14 +149,16 @@ export const YearRangeSelector: React.FC<YearRangeSelectorProps> = ({
 
             {/* Min Thumb */}
             <div
-                onMouseDown={handleMouseDown('min')}
+                onMouseDown={handleDragStart('min')}
+                onTouchStart={handleDragStart('min')}
                 className="absolute w-3 h-3 bg-cyan-400 rounded-full shadow cursor-grab active:cursor-grabbing hover:scale-125 transition-transform"
                 style={{ left: `${minPercent}%`, marginLeft: '-6px' }} 
             />
 
             {/* Max Thumb */}
             <div
-                onMouseDown={handleMouseDown('max')}
+                onMouseDown={handleDragStart('max')}
+                onTouchStart={handleDragStart('max')}
                 className="absolute w-3 h-3 bg-cyan-400 rounded-full shadow cursor-grab active:cursor-grabbing hover:scale-125 transition-transform"
                 style={{ left: `${maxPercent}%`, marginLeft: '-6px' }} 
             />
