@@ -294,7 +294,7 @@ export const ShowCard: React.FC<ShowCardProps> = ({ show, apiKey }) => {
                      )}
                   </div>
                   <div className="text-center w-full px-1">
-                     <p className="text-[9px] font-bold text-gray-300 uppercase leading-tight w-full break-words line-clamp-2" title={actor.name}>
+                     <p className="text-[9px] font-bold text-gray-300 leading-tight w-full break-words line-clamp-2" title={actor.name}>
                         {actor.name}
                      </p>
                      <p className="text-[8px] text-gray-500 uppercase leading-tight line-clamp-2 w-full mt-0.5" title={actor.character}>
