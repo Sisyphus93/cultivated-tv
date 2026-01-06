@@ -125,7 +125,7 @@ export const YearRangeSelector: React.FC<YearRangeSelectorProps> = ({
       >
         <span className="w-2 h-2 bg-cyan-400 rounded-full"></span>
         <span className="text-[10px] font-mono uppercase tracking-widest border-b border-transparent group-hover:border-gray-500 transition-colors pb-0.5">
-            <span className={`${isOpen ? 'text-gray-400' : 'text-gray-600 group-hover:text-gray-500'} transition-colors`}>Year: </span>
+            <span className={`${isOpen ? 'text-gray-500' : 'text-gray-500 group-hover:text-gray-400'} transition-colors`}>Year: </span>
             <span className="text-white font-bold">{localRange[0]}</span>
             <span className="text-gray-600 mx-1">-</span>
             <span className="text-white font-bold">{localRange[1]}</span>

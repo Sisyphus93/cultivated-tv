@@ -147,8 +147,9 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({ selectedLang
       >
         <div className="flex items-center gap-2">
             <Globe size={14} className={selectedLang ? 'text-white' : 'text-gray-600 group-hover:text-gray-400'} />
-            <span className={`text-[10px] font-mono uppercase tracking-widest border-b border-transparent group-hover:border-gray-500 pb-0.5 ${selectedLang ? 'text-white font-bold' : ''}`}>
-                Language: {selectedName}
+            <span className="text-[10px] font-mono uppercase tracking-widest border-b border-transparent group-hover:border-gray-500 pb-0.5">
+                <span className="text-gray-500 group-hover:text-gray-400 transition-colors">Language: </span>
+                <span className="text-white font-bold">{selectedName}</span>
             </span>
         </div>
       </button>

@@ -45,8 +45,9 @@ export const SortSelector: React.FC<SortSelectorProps> = ({ selectedSort, onSele
       >
         <div className="flex items-center gap-2">
             <ArrowUpDown size={14} className={!isDefault ? 'text-white' : 'text-gray-600 group-hover:text-gray-400'} />
-            <span className={`text-[10px] font-mono uppercase tracking-widest border-b border-transparent group-hover:border-gray-500 pb-0.5 ${!isDefault ? 'text-white font-bold' : ''}`}>
-                Sort: {selectedLabel}
+            <span className="text-[10px] font-mono uppercase tracking-widest border-b border-transparent group-hover:border-gray-500 pb-0.5">
+                <span className="text-gray-500 group-hover:text-gray-400 transition-colors">Sort: </span>
+                <span className="text-white font-bold">{selectedLabel}</span>
             </span>
         </div>
       </button>
