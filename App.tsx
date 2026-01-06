@@ -338,8 +338,8 @@ const App: React.FC = () => {
 
         <div className="flex flex-col md:flex-row justify-between items-end gap-6 pt-6">
           <div className="w-full md:w-auto">
-            <h1 className="text-4xl md:text-6xl font-thin tracking-tighter text-white mb-4">
-              CULTIVATED<span className="font-bold">TV</span>
+            <h1 className="text-4xl md:text-6xl font-thin tracking-[-0.08em] text-white mb-4">
+              CULTIVATED<span className="font-black">TV</span>
             </h1>
 
             {/* VIEW MODE TOGGLE */}
@@ -374,8 +374,8 @@ const App: React.FC = () => {
                    {/* Rating Input */}
                    <div className="flex items-center gap-2">
                      <span className="w-2 h-2 bg-yellow-600 rounded-full"></span>
-                     <label className="flex items-center gap-2">
-                       Rating &ge; 
+                     <label className="flex items-center gap-2 cursor-pointer group">
+                       <span className="text-gray-600 transition-colors group-hover:text-gray-500">Rating &ge;</span>
                        <input 
                          type="number"
                          min="0"
@@ -383,7 +383,7 @@ const App: React.FC = () => {
                          step="0.1"
                          value={minRating}
                          onChange={(e) => setMinRating(e.target.value)}
-                         className="bg-transparent border-b border-gray-800 text-white w-12 text-center focus:outline-none focus:border-yellow-600 transition-colors font-mono"
+                         className="bg-transparent border-b border-gray-800 text-white w-12 text-center focus:outline-none focus:border-yellow-600 transition-colors font-mono font-bold"
                          placeholder="0"
                        />
                      </label>
@@ -392,15 +392,15 @@ const App: React.FC = () => {
                    {/* Votes Input */}
                    <div className="flex items-center gap-2">
                      <span className="w-2 h-2 bg-gray-600 rounded-full"></span>
-                     <label className="flex items-center gap-2">
-                       Votes &ge; 
+                     <label className="flex items-center gap-2 cursor-pointer group">
+                       <span className="text-gray-600 transition-colors group-hover:text-gray-500">Votes &ge;</span>
                        <input 
                          type="number"
                          min="0"
                          step="1"
                          value={minVotes}
                          onChange={(e) => setMinVotes(e.target.value)}
-                         className="bg-transparent border-b border-gray-800 text-white w-16 text-center focus:outline-none focus:border-gray-500 transition-colors font-mono"
+                         className="bg-transparent border-b border-gray-800 text-white w-16 text-center focus:outline-none focus:border-gray-500 transition-colors font-mono font-bold"
                          placeholder="0"
                        />
                      </label>
@@ -522,8 +522,8 @@ const App: React.FC = () => {
       {viewMode === 'discover' && (
         <div className={`transition-all duration-700 ease-in-out ${debouncedSearchQuery ? 'opacity-20 pointer-events-none grayscale blur-[1px]' : 'opacity-100'}`}>
           
-          {/* Genre Filter Bar */}
-          <div className="max-w-5xl mx-auto mb-10 border-b border-gray-900 pb-6">
+          {/* Genre Filter Bar - Increased Bottom Spacing */}
+          <div className="max-w-5xl mx-auto mb-20 border-b border-gray-900 pb-6">
             
             {/* CONTROL ROW: Always visible to prevent layout shift */}
             <div className="flex items-center gap-4 mb-4 min-h-[32px]">
