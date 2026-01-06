@@ -330,7 +330,7 @@ const App: React.FC = () => {
                     setApiKey(null);
                     localStorage.removeItem('tmdb_api_key'); 
                 }}
-                className="text-xs text-gray-700 hover:text-white uppercase font-mono tracking-widest transition-colors"
+                className="text-xs text-gray-500 hover:text-white uppercase font-mono tracking-widest transition-colors"
              >
                 Reset Key
              </button>
@@ -346,14 +346,14 @@ const App: React.FC = () => {
             <div className="flex items-center gap-4 mb-6">
                <button 
                  onClick={() => setViewMode('discover')}
-                 className={`flex items-center gap-2 text-xs font-mono uppercase tracking-widest transition-colors pb-1 border-b-2 ${viewMode === 'discover' ? 'text-white border-white' : 'text-gray-600 border-transparent hover:text-gray-400'}`}
+                 className={`flex items-center gap-2 text-xs font-mono uppercase tracking-widest transition-colors pb-1 border-b-2 ${viewMode === 'discover' ? 'text-white border-white' : 'text-gray-500 border-transparent hover:text-gray-400'}`}
                >
                  <LayoutGrid size={12} /> Discover
                </button>
                <span className="text-gray-800">|</span>
                <button 
                  onClick={() => setViewMode('watchlist')}
-                 className={`flex items-center gap-2 text-xs font-mono uppercase tracking-widest transition-colors pb-1 border-b-2 ${viewMode === 'watchlist' ? 'text-white border-white' : 'text-gray-600 border-transparent hover:text-gray-400'}`}
+                 className={`flex items-center gap-2 text-xs font-mono uppercase tracking-widest transition-colors pb-1 border-b-2 ${viewMode === 'watchlist' ? 'text-white border-white' : 'text-gray-500 border-transparent hover:text-gray-400'}`}
                >
                  <Bookmark size={12} /> My List <span className="text-gray-500">({watchlist.length})</span>
                </button>
@@ -375,7 +375,7 @@ const App: React.FC = () => {
                    <div className="flex items-center gap-2">
                      <span className="w-2 h-2 bg-yellow-600 rounded-full"></span>
                      <label className="flex items-center gap-2 cursor-pointer group">
-                       <span className="text-gray-600 transition-colors group-hover:text-gray-500">Rating &ge;</span>
+                       <span className="text-gray-500 transition-colors group-hover:text-gray-400">Rating &ge;</span>
                        <input 
                          type="number"
                          min="0"
@@ -393,7 +393,7 @@ const App: React.FC = () => {
                    <div className="flex items-center gap-2">
                      <span className="w-2 h-2 bg-gray-600 rounded-full"></span>
                      <label className="flex items-center gap-2 cursor-pointer group">
-                       <span className="text-gray-600 transition-colors group-hover:text-gray-500">Votes &ge;</span>
+                       <span className="text-gray-500 transition-colors group-hover:text-gray-400">Votes &ge;</span>
                        <input 
                          type="number"
                          min="0"
@@ -510,7 +510,7 @@ const App: React.FC = () => {
              </div>
              
              {viewMode === 'discover' && (
-                <div className="text-gray-600 font-mono text-xs text-right">
+                <div className="text-gray-500 font-mono text-xs text-right">
                   PAGE {page} <span className="text-gray-800">/</span> {totalPages}
                 </div>
              )}
