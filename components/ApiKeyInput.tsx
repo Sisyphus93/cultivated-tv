@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { Key, ArrowRight, Loader2 } from 'lucide-react';
+import { Key, ArrowRight, Loader2, PlayCircle } from 'lucide-react';
 
 interface ApiKeyInputProps {
   onSetKey: (key: string) => void;
+  onEnterDemo: () => void;
   error?: string | null;
 }
 
-export const ApiKeyInput: React.FC<ApiKeyInputProps> = ({ onSetKey, error }) => {
+export const ApiKeyInput: React.FC<ApiKeyInputProps> = ({ onSetKey, onEnterDemo, error }) => {
   const [inputVal, setInputVal] = useState('');
   const [isValidating, setIsValidating] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -87,8 +88,25 @@ export const ApiKeyInput: React.FC<ApiKeyInputProps> = ({ onSetKey, error }) => 
               )}
             </button>
           </form>
+          
+          <div className="mt-4 flex flex-col items-center gap-4">
+             <div className="w-full flex items-center gap-4">
+               <div className="h-px bg-gray-800 flex-1"></div>
+               <span className="text-[10px] text-gray-600 uppercase font-mono tracking-widest">OR</span>
+               <div className="h-px bg-gray-800 flex-1"></div>
+             </div>
 
-          <div className="mt-6 text-center">
+             <button
+                type="button"
+                onClick={onEnterDemo}
+                disabled={isValidating}
+                className="flex items-center gap-2 text-xs text-gray-400 hover:text-white font-mono uppercase tracking-widest border border-gray-800 hover:border-gray-600 rounded-sm px-4 py-2 transition-all"
+             >
+                <PlayCircle size={12} /> Try Demo Version
+             </button>
+          </div>
+
+          <div className="mt-6 text-center pt-6 border-t border-gray-900">
             <a 
               href="https://www.themoviedb.org/settings/api" 
               target="_blank" 
