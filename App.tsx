@@ -129,6 +129,18 @@ const App: React.FC = () => {
     setIsDemoMode(false);
   };
 
+  const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    // Intercept standard left-click to do soft reset (SPA behavior)
+    // Allow Middle-Click / Ctrl-Click to pass through for new tab (Default browser behavior)
+    if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+      e.preventDefault();
+      setViewMode('discover');
+      setSearchQuery('');
+      setPage(1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   // --- DISCOVER API LOGIC ---
   const loadData = useCallback(async () => {
     if (!apiKey || viewMode === 'watchlist') return;
@@ -362,7 +374,13 @@ const App: React.FC = () => {
         <div className="flex flex-col md:flex-row justify-between items-end gap-6 pt-6">
           <div className="w-full md:w-auto">
             <h1 className="text-4xl md:text-6xl font-thin tracking-[-0.08em] text-white mb-4">
-              CULTIVATED<span className="font-black">TV</span>
+              <a 
+                href="/" 
+                onClick={handleLogoClick}
+                className="text-white hover:opacity-80 transition-opacity hover:no-underline cursor-pointer"
+              >
+                CULTIVATED<span className="font-black">TV</span>
+              </a>
             </h1>
 
             {/* VIEW MODE TOGGLE */}
