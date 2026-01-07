@@ -7,13 +7,14 @@ import { SortSelector } from './components/SortSelector';
 import { YearRangeSelector } from './components/YearRangeSelector';
 import { discoverShows, searchShows } from './services/tmdbService';
 import { TVShow } from './types';
-import { FILTER_CONFIG, POPULAR_GENRES, WATCHLIST_SORT_OPTIONS } from './constants';
+import { FILTER_CONFIG, POPULAR_GENRES, WATCHLIST_SORT_OPTIONS, DEMO_API_KEY } from './constants';
 import { useWatchlist } from './hooks/useWatchlist';
 
 type ViewMode = 'discover' | 'watchlist';
 
 const App: React.FC = () => {
   const [apiKey, setApiKey] = useState<string | null>(null);
+  const [isDemoMode, setIsDemoMode] = useState(false);
   
   // View State
   const [viewMode, setViewMode] = useState<ViewMode>('discover');
@@ -100,17 +101,32 @@ const App: React.FC = () => {
 
     if (localKey) {
       setApiKey(localKey);
+      setIsDemoMode(false);
     } else if (sessionKey) {
       // Migrate legacy key to new storage
       localStorage.setItem('tmdb_api_key', sessionKey);
       setApiKey(sessionKey);
+      setIsDemoMode(false);
     }
   }, []);
 
   const handleSetKey = (key: string) => {
     localStorage.setItem('tmdb_api_key', key);
     setApiKey(key);
+    setIsDemoMode(false);
     setError(null);
+  };
+
+  const handleEnterDemo = () => {
+    setApiKey(DEMO_API_KEY);
+    setIsDemoMode(true);
+    setError(null);
+  };
+
+  const handleResetKey = () => {
+    setApiKey(null);
+    localStorage.removeItem('tmdb_api_key');
+    setIsDemoMode(false);
   };
 
   // --- DISCOVER API LOGIC ---
@@ -261,7 +277,7 @@ const App: React.FC = () => {
   };
 
   if (!apiKey) {
-    return <ApiKeyInput onSetKey={handleSetKey} error={error} />;
+    return <ApiKeyInput onSetKey={handleSetKey} onEnterDemo={handleEnterDemo} error={error} />;
   }
 
   const renderGenreSummary = () => {
@@ -325,11 +341,18 @@ const App: React.FC = () => {
       {/* Header */}
       <header className="max-w-5xl mx-auto mb-8 border-b border-gray-900 pb-8 relative">
          <div className="absolute top-0 right-0 z-10 flex gap-4 items-center">
+             {isDemoMode ? (
+               <span className="px-2 py-1 bg-yellow-900/20 border border-yellow-700 text-yellow-500 text-[10px] font-bold tracking-widest uppercase rounded-sm animate-fade-in">
+                 Demo Mode
+               </span>
+             ) : (
+               <span className="px-2 py-1 bg-green-900/20 border border-green-700 text-green-500 text-[10px] font-bold tracking-widest uppercase rounded-sm animate-fade-in">
+                 Pro Mode
+               </span>
+             )}
+             
              <button 
-                onClick={() => {
-                    setApiKey(null);
-                    localStorage.removeItem('tmdb_api_key'); 
-                }}
+                onClick={handleResetKey}
                 className="text-xs text-gray-500 hover:text-white uppercase font-mono tracking-widest transition-colors"
              >
                 Reset Key

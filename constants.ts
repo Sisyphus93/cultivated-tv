@@ -27,6 +27,8 @@ export const FILTER_CONFIG = {
   SORT_BY: 'first_air_date.desc',
 };
 
+export const DEMO_API_KEY = '9539a6f0d63ee694dd67777392d93c84';
+
 // Sort Options
 export const SORT_OPTIONS = [
   { value: 'first_air_date.desc', label: 'Newest' },
