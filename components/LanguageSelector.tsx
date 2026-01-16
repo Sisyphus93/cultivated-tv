@@ -170,7 +170,7 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({ selectedLang
           </div>
 
           {/* List */}
-          <div className="max-h-60 overflow-y-auto py-1">
+          <div className="max-h-60 overflow-y-auto py-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-800 hover:[&::-webkit-scrollbar-thumb]:bg-gray-600">
              {renderList()}
              {/* Empty State */}
              {Array.isArray(filteredLanguages) && filteredLanguages.length === 0 && (
