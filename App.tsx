@@ -351,7 +351,7 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-[#050505] text-gray-100 p-6 md:p-12 font-sans selection:bg-white selection:text-black">
       
       {/* Header */}
-      <header className="max-w-5xl mx-auto mb-8 border-b border-gray-900 pb-8 relative">
+      <header className="max-w-5xl mx-auto mb-8 border-b border-gray-900 pb-8 relative z-50">
          <div className="absolute top-0 right-0 z-10 flex gap-4 items-center">
              {isDemoMode ? (
                <span className="px-2 py-1 bg-yellow-900/20 border border-yellow-700 text-yellow-500 text-[10px] font-bold tracking-widest uppercase rounded-sm animate-fade-in">
@@ -632,7 +632,7 @@ const App: React.FC = () => {
       )}
 
       {/* Content Area */}
-      <main className="max-w-5xl mx-auto min-h-[50vh]">
+      <main className="max-w-5xl mx-auto min-h-[50vh] relative z-0">
         {/* DISCOVER VIEW */}
         {viewMode === 'discover' && (
            <>
