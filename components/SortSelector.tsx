@@ -82,16 +82,12 @@ export const SortSelector: React.FC<SortSelectorProps> = ({ selectedSort, onSele
                                className="p-1 -m-1 ml-1 text-gray-500 group-hover:text-black hover:!text-blue-500 transition-colors z-20 cursor-help"
                                onMouseEnter={(e) => {
                                  const rect = e.currentTarget.getBoundingClientRect();
-                                 // Calculate position: Left of the icon by default
-                                 let x = rect.left - 180; 
-                                 let y = rect.top - 5; 
-                                 
-                                 // Boundary check: if too far left, flip to right
-                                 if (x < 10) {
-                                    x = rect.right + 10;
-                                 }
-
-                                 setTooltip({ show: true, x, y });
+                                 // Position 12px to the left of the icon, vertically centered
+                                 setTooltip({ 
+                                     show: true, 
+                                     x: rect.left - 12, 
+                                     y: rect.top + (rect.height / 2) 
+                                 });
                                }}
                                onMouseLeave={() => setTooltip(prev => ({ ...prev, show: false }))}
                                onClick={(e) => {
@@ -114,12 +110,18 @@ export const SortSelector: React.FC<SortSelectorProps> = ({ selectedSort, onSele
       {/* Fixed Tooltip Layer - Escapes Overflow Clipping */}
       {tooltip.show && (
         <div 
-           className="fixed z-[9999] bg-[#050505] border border-gray-700 p-3 shadow-2xl w-44 rounded-sm pointer-events-none animate-fade-in"
-           style={{ top: tooltip.y, left: tooltip.x }}
+           className="fixed z-[9999] bg-black border border-gray-800 px-3 py-2 shadow-2xl rounded-sm pointer-events-none animate-fade-in whitespace-nowrap"
+           style={{ 
+               top: tooltip.y, 
+               left: tooltip.x,
+               transform: 'translate(-100%, -50%)'
+           }}
         >
-           <p className="text-[10px] text-gray-300 leading-relaxed font-sans">
+           <span className="text-[10px] text-gray-300 font-sans tracking-wide">
              Based on views, votes, release date, and social trends.
-           </p>
+           </span>
+           {/* Arrow pointing to the right (towards the icon) */}
+           <div className="absolute top-1/2 -right-[5px] -translate-y-1/2 w-2.5 h-2.5 bg-black border-t border-r border-gray-800 rotate-45"></div>
         </div>
       )}
     </div>
