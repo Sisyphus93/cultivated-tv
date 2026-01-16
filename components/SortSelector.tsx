@@ -17,6 +17,13 @@ export const SortSelector: React.FC<SortSelectorProps> = ({ selectedSort, onSele
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
+  // Tooltip State for "Fixed" positioning to escape overflow clipping
+  const [tooltip, setTooltip] = useState<{ show: boolean; x: number; y: number }>({
+    show: false,
+    x: 0,
+    y: 0,
+  });
+
   // Use provided options or fallback to default
   const activeOptions = options || SORT_OPTIONS;
 
@@ -24,6 +31,7 @@ export const SortSelector: React.FC<SortSelectorProps> = ({ selectedSort, onSele
     const handleClickOutside = (event: MouseEvent) => {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
         setIsOpen(false);
+        setTooltip(prev => ({ ...prev, show: false }));
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -62,6 +70,7 @@ export const SortSelector: React.FC<SortSelectorProps> = ({ selectedSort, onSele
                         onClick={() => {
                             onSelect(option.value);
                             setIsOpen(false);
+                            setTooltip(prev => ({ ...prev, show: false }));
                         }}
                         className={`w-full text-left px-4 py-2 text-xs font-mono uppercase tracking-widest hover:bg-white hover:text-black transition-colors flex justify-between items-center ${option.value === selectedSort ? 'text-white' : 'text-gray-500'}`}
                     >
@@ -71,7 +80,20 @@ export const SortSelector: React.FC<SortSelectorProps> = ({ selectedSort, onSele
                              <div 
                                role="button"
                                className="p-1 -m-1 ml-1 text-gray-500 group-hover:text-black hover:!text-blue-500 transition-colors z-20 cursor-help"
-                               title="Based on views, votes, release date, and social trends."
+                               onMouseEnter={(e) => {
+                                 const rect = e.currentTarget.getBoundingClientRect();
+                                 // Calculate position: Left of the icon by default
+                                 let x = rect.left - 180; 
+                                 let y = rect.top - 5; 
+                                 
+                                 // Boundary check: if too far left, flip to right
+                                 if (x < 10) {
+                                    x = rect.right + 10;
+                                 }
+
+                                 setTooltip({ show: true, x, y });
+                               }}
+                               onMouseLeave={() => setTooltip(prev => ({ ...prev, show: false }))}
                                onClick={(e) => {
                                  e.stopPropagation();
                                }}
@@ -86,6 +108,18 @@ export const SortSelector: React.FC<SortSelectorProps> = ({ selectedSort, onSele
                 );
              })}
           </div>
+        </div>
+      )}
+
+      {/* Fixed Tooltip Layer - Escapes Overflow Clipping */}
+      {tooltip.show && (
+        <div 
+           className="fixed z-[9999] bg-[#050505] border border-gray-700 p-3 shadow-2xl w-44 rounded-sm pointer-events-none animate-fade-in"
+           style={{ top: tooltip.y, left: tooltip.x }}
+        >
+           <p className="text-[10px] text-gray-300 leading-relaxed font-sans">
+             Based on views, votes, release date, and social trends.
+           </p>
         </div>
       )}
     </div>
