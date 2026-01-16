@@ -16,7 +16,6 @@ interface SortSelectorProps {
 export const SortSelector: React.FC<SortSelectorProps> = ({ selectedSort, onSelect, options }) => {
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const [showTooltip, setShowTooltip] = useState(false);
 
   // Use provided options or fallback to default
   const activeOptions = options || SORT_OPTIONS;
@@ -25,7 +24,6 @@ export const SortSelector: React.FC<SortSelectorProps> = ({ selectedSort, onSele
     const handleClickOutside = (event: MouseEvent) => {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
         setIsOpen(false);
-        setShowTooltip(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -64,7 +62,6 @@ export const SortSelector: React.FC<SortSelectorProps> = ({ selectedSort, onSele
                         onClick={() => {
                             onSelect(option.value);
                             setIsOpen(false);
-                            setShowTooltip(false);
                         }}
                         className={`w-full text-left px-4 py-2 text-xs font-mono uppercase tracking-widest hover:bg-white hover:text-black transition-colors flex justify-between items-center ${option.value === selectedSort ? 'text-white' : 'text-gray-500'}`}
                     >
@@ -74,11 +71,9 @@ export const SortSelector: React.FC<SortSelectorProps> = ({ selectedSort, onSele
                              <div 
                                role="button"
                                className="p-1 -m-1 ml-1 text-gray-500 group-hover:text-black hover:!text-blue-500 transition-colors z-20 cursor-help"
-                               onMouseEnter={() => setShowTooltip(true)}
-                               onMouseLeave={() => setShowTooltip(false)}
+                               title="Based on views, votes, release date, and social trends."
                                onClick={(e) => {
                                  e.stopPropagation();
-                                 setShowTooltip(!showTooltip);
                                }}
                              >
                                <Info size={11} strokeWidth={2} />
@@ -87,20 +82,6 @@ export const SortSelector: React.FC<SortSelectorProps> = ({ selectedSort, onSele
                         </span>
                         {option.value === selectedSort && <Check size={12} />}
                     </button>
-
-                    {/* Tooltip */}
-                    {isPopularity && showTooltip && (
-                      <div className="absolute z-[60] bg-gray-900 border border-gray-700 p-2 shadow-xl w-full right-0 top-full mt-1">
-                         <div className="relative">
-                           {/* Arrow (Up pointing -> towards item) */}
-                           <div className="absolute bottom-full right-4 -mb-px border-4 border-transparent border-b-gray-700" />
-                           
-                           <p className="text-[10px] text-gray-300 normal-case leading-relaxed font-sans">
-                             Based on views, votes, release date, and social trends.
-                           </p>
-                         </div>
-                      </div>
-                    )}
                   </div>
                 );
              })}
