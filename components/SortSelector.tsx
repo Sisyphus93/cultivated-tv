@@ -53,7 +53,7 @@ export const SortSelector: React.FC<SortSelectorProps> = ({ selectedSort, onSele
       </button>
 
       {isOpen && (
-        <div className="absolute top-full right-0 mt-2 w-48 bg-[#111] border border-gray-800 shadow-2xl z-50 animate-fade-in origin-top-right">
+        <div className="absolute top-full right-0 mt-2 w-48 bg-[#111] border border-gray-800 shadow-2xl z-[100] animate-fade-in origin-top-right">
           <div className="py-1 max-h-60 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-800 hover:[&::-webkit-scrollbar-thumb]:bg-gray-600">
              {activeOptions.map(option => {
                 const isPopularity = option.label === 'Popularity';

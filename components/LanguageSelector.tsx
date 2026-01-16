@@ -155,7 +155,7 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({ selectedLang
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 w-48 bg-[#111] border border-gray-800 shadow-2xl z-50 animate-fade-in origin-top-left">
+        <div className="absolute top-full left-0 mt-2 w-48 bg-[#111] border border-gray-800 shadow-2xl z-[100] animate-fade-in origin-top-left">
           {/* Search Header */}
           <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-800">
             <Search size={12} className="text-gray-500" />
