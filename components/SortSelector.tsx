@@ -110,14 +110,14 @@ export const SortSelector: React.FC<SortSelectorProps> = ({ selectedSort, onSele
       {/* Fixed Tooltip Layer - Escapes Overflow Clipping */}
       {tooltip.show && (
         <div 
-           className="fixed z-[9999] bg-black border border-gray-800 px-3 py-2 shadow-2xl rounded-sm pointer-events-none animate-fade-in whitespace-nowrap"
+           className="fixed z-[9999] bg-black border border-gray-800 px-3 py-2 shadow-2xl rounded-sm pointer-events-none animate-fade-in whitespace-nowrap normal-case tracking-normal text-left"
            style={{ 
                top: tooltip.y, 
                left: tooltip.x,
                transform: 'translate(-100%, -50%)'
            }}
         >
-           <span className="text-[10px] text-gray-300 font-sans tracking-wide">
+           <span className="text-[10px] text-gray-300 font-sans">
              Based on views, votes, release date, and social trends.
            </span>
            {/* Arrow pointing to the right (towards the icon) */}
