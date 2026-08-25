@@ -47,7 +47,9 @@ const App: React.FC = () => {
   // Filter States - Use strings to allow empty input (clearing the field)
   const [minVotes, setMinVotes] = useState<string>(String(FILTER_CONFIG.MIN_VOTES));
   const [minRating, setMinRating] = useState<string>(String(FILTER_CONFIG.MIN_RATING));
-  const [language, setLanguage] = useState<string>('en'); // Default to English as per request
+  // Language Filters - Multi-select with include/exclude (3-state cycle per language)
+  const [includedLanguages, setIncludedLanguages] = useState<string[]>(['en']); // Default to English as per request
+  const [excludedLanguages, setExcludedLanguages] = useState<string[]>([]);
   
   // Year Range State
   const CURRENT_YEAR = new Date().getFullYear();
@@ -158,7 +160,8 @@ const App: React.FC = () => {
         data = await discoverShows(apiKey, page, {
           withGenres: includedGenres,
           withoutGenres: excludedGenres,
-          withOriginalLanguage: language,
+          withOriginalLanguage: includedLanguages.length > 0 ? includedLanguages : undefined,
+          withoutOriginalLanguage: excludedLanguages,
           withPeople: selectedPerson ? String(selectedPerson.id) : undefined,
           minVotes: debouncedFilters.minVotes,
           minRating: debouncedFilters.minRating,
@@ -184,7 +187,7 @@ const App: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [apiKey, page, includedGenres, excludedGenres, debouncedFilters, language, selectedPerson, debouncedSearchQuery, genreMode, sortBy, viewMode]);
+  }, [apiKey, page, includedGenres, excludedGenres, debouncedFilters, includedLanguages, excludedLanguages, selectedPerson, debouncedSearchQuery, genreMode, sortBy, viewMode]);
 
   // Trigger fetch when dependencies change in Discover mode
   useEffect(() => {
@@ -261,7 +264,29 @@ const App: React.FC = () => {
   const clearGenres = () => {
     setIncludedGenres([]);
     setExcludedGenres([]);
-    setSelectedPerson(null); 
+    setSelectedPerson(null);
+    setPage(1);
+  };
+
+  // --- LANGUAGE LOGIC (3-state cycle: include -> exclude -> off) ---
+  const handleLanguageToggle = (code: string) => {
+    if (includedLanguages.includes(code)) {
+      // Include -> Exclude
+      setIncludedLanguages(includedLanguages.filter(c => c !== code));
+      setExcludedLanguages([...excludedLanguages, code]);
+    } else if (excludedLanguages.includes(code)) {
+      // Exclude -> Off
+      setExcludedLanguages(excludedLanguages.filter(c => c !== code));
+    } else {
+      // Off -> Include
+      setIncludedLanguages([...includedLanguages, code]);
+    }
+    setPage(1);
+  };
+
+  const clearLanguages = () => {
+    setIncludedLanguages([]);
+    setExcludedLanguages([]);
     setPage(1);
   };
 
@@ -478,9 +503,11 @@ const App: React.FC = () => {
                    {/* Language Selector */}
                    <div className="flex items-center gap-2">
                       <span className="w-2 h-2 bg-purple-400 rounded-full"></span>
-                      <LanguageSelector 
-                          selectedLang={language} 
-                          onSelect={(code) => { setLanguage(code); setPage(1); }} 
+                      <LanguageSelector
+                          includedLangs={includedLanguages}
+                          excludedLangs={excludedLanguages}
+                          onToggle={handleLanguageToggle}
+                          onClear={clearLanguages}
                       />
                    </div>
                  </div>
