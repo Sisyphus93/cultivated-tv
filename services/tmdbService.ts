@@ -6,7 +6,10 @@ const BASE_URL = 'https://api.themoviedb.org/3';
 interface DiscoverOptions {
   withGenres?: number[];
   withoutGenres?: number[];
-  withOriginalLanguage?: string;
+  // Multiple languages are supported server-side via pipe (|) OR syntax
+  withOriginalLanguage?: string[];
+  // TMDb has no "without_original_language" param, so exclusions are applied client-side
+  withoutOriginalLanguage?: string[];
   withPeople?: string;
   minVotes: number;
   minRating: number;
@@ -61,8 +64,9 @@ export const discoverShows = async (apiKey: string, page: number, options: Disco
     queryParams['without_genres'] = options.withoutGenres.join(',');
   }
 
-  if (options.withOriginalLanguage) {
-    queryParams['with_original_language'] = options.withOriginalLanguage;
+  if (options.withOriginalLanguage && options.withOriginalLanguage.length > 0) {
+    // TMDB Logic: Pipe '|' = OR (a show only has ONE original language, so OR is the only sensible join)
+    queryParams['with_original_language'] = options.withOriginalLanguage.join('|');
   }
 
   if (options.withPeople) {
@@ -90,6 +94,13 @@ export const discoverShows = async (apiKey: string, page: number, options: Disco
 
     // Check against 99% of requested rating (e.g., if user said 6.0, we accept 5.94+)
     if (show.vote_average < targetRating) return false;
+
+    // Language Exclusion: TMDb has no server-side "without_original_language",
+    // so we drop excluded languages here. Note: total_results/total_pages remain
+    // server-side counts, so a page may show fewer items than usual.
+    if (options.withoutOriginalLanguage && options.withoutOriginalLanguage.length > 0) {
+      if (options.withoutOriginalLanguage.includes(show.original_language)) return false;
+    }
 
     return true;
   });

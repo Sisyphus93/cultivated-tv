@@ -22,6 +22,7 @@ Stop guessing. The app calculates the total runtime of every show (e.g., *The Of
 ### 🔍 Precision Filtering
 Standard filters aren't enough. Cultivated TV offers:
 *   **Include/Exclude:** Want *Action* but hate *Superhero* movies? You can strictly exclude genres.
+*   **Multi-Language:** Select several original languages at once (e.g., *English + Korean + Japanese*), or exclude the ones you don't want (everything *except* Anime staples like Japanese). Click a language once to include it, again to exclude it.
 *   **Logic Control:** Toggle between **MATCH: ANY** (Broad) and **MATCH: ALL** (Strict) logic.
 *   **Era Slider:** A dual-handle slider to filter by specific decades (1900–2031).
 
