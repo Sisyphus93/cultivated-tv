@@ -1631,7 +1631,12 @@ html {
 }
 
 .irow[data-newletter='true'] {
-  border-top: 2px solid var(--ink);
+  /* the letter changes — a slightly firmer rule, not a box */
+  border-top: 1px solid var(--hairline-strong);
+}
+
+.irow[data-newletter='true'] .irow__letter {
+  color: var(--ink);
 }
 
 .irow__letter {
