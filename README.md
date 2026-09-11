@@ -1,82 +1,110 @@
-# CULTIVATED TV 📺
+# AIRTIME
 
-**The "Noir" Discovery Dashboard for Stremio Power Users.**
+**Television, considered.**
 
-[**🚀 Launch App**](https://cultivated-tv.vercel.app/)
+A weekly TV-series guide with the soul of a printed listings page and the rigor of a
+film journal. Criticism tells you what matters, a schedule tells you when, a dense
+index lets you hunt.
 
-![App Screenshot](https://raw.githubusercontent.com/Sisyphus93/cultivated-tv/refs/heads/main/homepage.jpg)
-
-## 🧐 What is this?
-**Cultivated TV** is a custom-built discovery engine designed to replace the standard Stremio browsing experience. It focuses on deep filtering, data transparency, and binge planning.
-
-It was built to answer three questions:
-1. *"How long will this show actually take to finish?"*
-2. *"Can I find a Sci-Fi show that ISN'T an Anime?"*
-3. *"Can I filter my backlog by the shortest binge time?"*
-
-## ✨ Key Features
-
-### 📉 Binge Liability Calculator
-Stop guessing. The app calculates the total runtime of every show (e.g., *The Office* = 140 Hours, *Chernobyl* = 5 Hours) so you know the commitment before you start.
-
-### 🔍 Precision Filtering
-Standard filters aren't enough. Cultivated TV offers:
-*   **Include/Exclude:** Want *Action* but hate *Superhero* movies? You can strictly exclude genres.
-*   **Multi-Language:** Select several original languages at once (e.g., *English + Korean + Japanese*), or exclude the ones you don't want (everything *except* Anime staples like Japanese). Click a language once to include it, again to exclude it.
-*   **Logic Control:** Toggle between **MATCH: ANY** (Broad) and **MATCH: ALL** (Strict) logic.
-*   **Era Slider:** A dual-handle slider to filter by specific decades (1900–2031).
-
-### 🔗 Stremio Deep Linking
-Found something you like? Click the **"Play on Stremio"** button to instantly open the show in your desktop or mobile Stremio app.
-
-### 📊 The Library (Watchlist)
-A local, privacy-focused watchlist that lets you:
-*   **Sort by "Shortest Binge":** Clear your backlog by knocking out short shows first.
-*   **Track Stats:** See your total "Binge Liability" in hours.
-
-### 🔦 "Noir" Aesthetic
-A clean, dark-mode-first UI designed to minimize distractions. The interface uses a "Ghost" design language—buttons and metadata only appear when you interact with the content.
+> This branch replaces the previous "Noir" discovery dashboard (TMDB + Stremio deep
+> links). That app is preserved in the git history, tagged by its old README;
+> everything here is the guide.
 
 ---
 
-## 🔐 Privacy & BYOK (Bring Your Own Key)
-This application is **Client-Side Only**. There is no backend server tracking your searches.
+## The idea
 
-To use the app, you need a **TMDB API Key**.
-1.  The app uses *your* key to fetch data directly from The Movie Database.
-2.  Your key is stored in your browser's `localStorage`.
-3.  It is never sent to any third-party server.
+Television is a time-based medium: it airs, it returns, it occupies a slot in your
+week. Most streaming UIs pretend otherwise — infinite scroll, no clocks, no seasons.
+AIRTIME leans the other way and borrows from three artifacts:
 
-[**👉 Get a free TMDB API Key here**](https://www.themoviedb.org/settings/api)
+| Artifact | What it gives the UI |
+| --- | --- |
+| The printed weekly guide | Hairline rules, dense rows, mono times, channel numbers, issue dates |
+| The film journal | Serif display type, pull quotes, criticism, colophon |
+| The broadcast signal | ON AIR pulse, signal-strength bars, test cards, a tuning ticker |
 
----
+The site is published in issues — *Issue No. 47, Week of March 9, 2026* — so every
+screen carries a date and a reason to come back. All dates in the guide are pinned to
+the issue week on purpose: this is a printed thing, not a live feed.
 
-## 🛠️ Tech Stack
-*   **Framework:** React 18 + Vite
-*   **Styling:** Tailwind CSS (Custom "Noir" Config)
-*   **Icons:** Lucide React
-*   **Data:** TMDB API V3
-*   **Deployment:** Vercel
+## What is on the page
 
-## 💻 Running Locally
-If you want to run this code on your own machine:
+1. **Tuning ticker** — a slow mono marquee; pauses for pointer or keyboard focus.
+2. **Masthead** — issue number, date, ON AIR, the wordmark (the tittle of the “i” is
+   an accent square), section nav, and a search that filters the Index live.
+3. **Cover story** — 7/12 type against 5/12 key art, one thesis, three critics with
+   signal bars, one call to action.
+4. **Tonight on the dial** — a night section of schedule rows: `21:00 ▏CH 04 ▏TITLE ▏
+   meta ▏▮▮▮ ▏›`. Hover lifts a press-shadowed card that follows the cursor; keyboard
+   focus gets the same card anchored to the row; on phones a tap expands the row.
+5. **Critics’ journal** — a lead piece with a pull quote and two essays, with a
+   drop cap and a “Continue” that actually continues.
+6. **Returning soon** — three countdown wells, gold numerals counting up on reveal.
+7. **The Index** — A–Z by filing title, genre tabs with live counts, every row
+   expandable into its full entry (key art, thesis, blurb, credits).
+8. **Colophon** — giant wordmark at 12%, About / The Guide / Signal, sign-off.
 
-1.  **Clone the repo**
-    ```bash
-    git clone https://github.com/Sisyphus93/cultivated-tv.git
-    cd cultivated-tv
-    ```
+## Design system
 
-2.  **Install dependencies**
-    ```bash
-    npm install
-    ```
+[`DESIGN.md`](DESIGN.md) is the source of truth: tokens, type scale, texture, motifs,
+components, motion, responsiveness, accessibility, and a ledger of the places where
+the specification left a choice to make.
 
-3.  **Start the server**
-    ```bash
-    npm run dev
-    ```
+[`preview.html`](preview.html) is a static, build-free render of the same system —
+swatches, the type scale, every motif, buttons, a schedule row, a countdown well —
+for checking the palette and the grain without starting a dev server.
 
-## 🤝 Feedback
-This project was "vibe coded" as a personal tool, but I'm open to feedback from the Stremio community!
-Feel free to open an Issue if you find a bug or have a feature request for v1.3.
+Rules worth repeating: warm paper, never glass · one accent (tuner red), used about
+six times per viewport · mono for every time, channel and number · no gradients, no
+blur, no star ratings, no radius above 2px · shadows are press shadows, twice in the
+whole product · criticism is the product, so copy is written, never lorem.
+
+## Running it
+
+```bash
+npm install
+npm run dev        # http://localhost:5173
+npm run build      # tsc --noEmit && vite build → dist/index.html (JS + CSS inlined)
+npm run typecheck
+```
+
+`npm run preview` serves `dist/`. Key art lives in `public/images/` and is referenced
+relatively, so the folder can be hosted from any static origin (Vercel, Netlify, a
+subdirectory, a USB stick).
+
+## Editing the guide
+
+Everything the site prints comes from [`src/data/shows.ts`](src/data/shows.ts): the
+issue, the ten series with their channels, slots, episode codes, theses and blurbs,
+the journal pieces, the ticker, the frequency marks. Add a show there and it appears in
+Tonight, the Index and (if it has a premiere date) the countdowns.
+
+```
+src/
+├── App.tsx                    page assembly, in anatomy order
+├── index.css                  tokens, type, texture, motifs, components, motion
+├── data/shows.ts              the catalogue — editorial content, not marketing copy
+├── hooks/useReveal.ts         IntersectionObserver reveal (80px threshold, once)
+├── lib/scroll.ts              guarded anchor travel
+└── components/
+    ├── Ticker.tsx  Masthead.tsx  CoverStory.tsx  TestBars.tsx
+    ├── TonightSchedule.tsx  CriticsJournal.tsx  ReturningSoon.tsx
+    └── ShowIndex.tsx  Colophon.tsx  Motifs.tsx
+```
+
+## Type
+
+Four families, one job each, loaded from Google Fonts: **Fraunces** (variable,
+`opsz`/`wght`/`SOFT`/`WONK`) for display, **Newsreader** for editorial body, **Inter**
+for UI, **JetBrains Mono** for time. If fonts.googleapis.com is unreachable the page
+falls back to Iowan/Georgia and the system mono stack, and the grid still holds.
+
+## Accessibility
+
+Focus rings are 2px accent at 3px offset · every row is a real `<a>` and every filter
+a real `<button>` · signal bars expose `aria-label="Rated 4 of 5 — strong signal"` ·
+the ticker is `aria-hidden` with the schedule as its static equivalent · countdown
+numerals announce their final value, not the animation · key art carries descriptive
+alt text · all motion collapses to instant under `prefers-reduced-motion`, and the
+paper grain stays because a static 5.5% overlay is vestibular-safe.
