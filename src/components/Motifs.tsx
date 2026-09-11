@@ -33,7 +33,7 @@ export const SignalBars = ({ value, max = 5 }: { value: number; max?: number }) 
   );
 };
 
-/** §7.4 ON AIR — 6px accent dot with a 2s pulse, next to mono “ON AIR”. */
+/** §7.4 ON AIR — a 6px accent dot with a 2s pulse ring, next to mono “ON AIR”. */
 export const OnAir = ({ quiet = false, label = 'On air' }: { quiet?: boolean; label?: string }) => (
   <span className={`onair${quiet ? ' onair--quiet' : ''}`}>
     <span className="onair__dot" aria-hidden="true" />
