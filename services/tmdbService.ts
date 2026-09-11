@@ -121,10 +121,40 @@ export const searchShows = async (apiKey: string, query: string, page: number): 
   return response.json();
 };
 
+/**
+ * Recommendations for the "More Worlds to Explore" rail.
+ * Falls back to /similar when a show has no recommendations yet.
+ */
+export const getRecommendations = async (apiKey: string, id: number): Promise<TVShow[]> => {
+  const pick = (results: TVShow[] = []) =>
+    results.filter((item) => item.poster_path).slice(0, 12);
+
+  try {
+    const response = await fetch(
+      `${BASE_URL}/tv/${id}/recommendations?api_key=${apiKey}&language=en-US&page=1`
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.results?.length) return pick(data.results);
+    }
+
+    const similarResponse = await fetch(
+      `${BASE_URL}/tv/${id}/similar?api_key=${apiKey}&language=en-US&page=1`
+    );
+    if (!similarResponse.ok) return [];
+
+    const similarData = await similarResponse.json();
+    return pick(similarData.results);
+  } catch (e) {
+    return [];
+  }
+};
+
 export const getShowDetails = async (apiKey: string, id: number) => {
-  // Append external_ids, aggregate_credits, videos, recommendations, and similar to the response
+  // Append external_ids, aggregate_credits and videos to the response.
   // aggregate_credits gives the full cast history (e.g. Steve Carell in The Office), whereas 'credits' often just gives the last season.
-  const response = await fetch(`${BASE_URL}/tv/${id}?api_key=${apiKey}&append_to_response=external_ids,aggregate_credits,videos,recommendations,similar`);
+  const response = await fetch(`${BASE_URL}/tv/${id}?api_key=${apiKey}&append_to_response=external_ids,aggregate_credits,videos`);
   if (!response.ok) {
     // Fail silently for details, return null
     return null;

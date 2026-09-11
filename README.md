@@ -1,10 +1,13 @@
 # CULTIVATED TV 📺
 
-**The "Noir" Discovery Dashboard for Stremio Power Users.**
+**A quiet, editorial discovery dashboard for Stremio power users.**
 
 [**🚀 Launch App**](https://cultivated-tv.vercel.app/)
 
 ![App Screenshot](https://raw.githubusercontent.com/Sisyphus93/cultivated-tv/refs/heads/main/homepage.jpg)
+
+> The screenshot above shows the original "noir" build. The current UI is a light, print-inspired
+> editorial theme — cream paper, Playfair Display headlines and dark-ink accents.
 
 ## 🧐 What is this?
 **Cultivated TV** is a custom-built discovery engine designed to replace the standard Stremio browsing experience. It focuses on deep filtering, data transparency, and binge planning.
@@ -24,7 +27,8 @@ Standard filters aren't enough. Cultivated TV offers:
 *   **Include/Exclude:** Want *Action* but hate *Superhero* movies? You can strictly exclude genres.
 *   **Multi-Language:** Select several original languages at once (e.g., *English + Korean + Japanese*), or exclude the ones you don't want (everything *except* Anime staples like Japanese). Click a language once to include it, again to exclude it.
 *   **Logic Control:** Toggle between **MATCH: ANY** (Broad) and **MATCH: ALL** (Strict) logic.
-*   **Era Slider:** A dual-handle slider to filter by specific decades (1900–2031).
+*   **Era Slider:** A dual-handle slider to filter by specific decades, with decade presets (1900–2031).
+*   **Live filter pills:** Each pill (Rating, Votes, Years, Language, Sort) opens an inline panel and shows the result count as you tweak it.
 
 ### 🔗 Stremio Deep Linking
 Found something you like? Click the **"Play on Stremio"** button to instantly open the show in your desktop or mobile Stremio app.
@@ -32,10 +36,16 @@ Found something you like? Click the **"Play on Stremio"** button to instantly op
 ### 📊 The Library (Watchlist)
 A local, privacy-focused watchlist that lets you:
 *   **Sort by "Shortest Binge":** Clear your backlog by knocking out short shows first.
-*   **Track Stats:** See your total "Binge Liability" in hours.
+*   **Track Stats:** See your total "Binge Liability" in hours, right in the toolbar.
 
-### 🔦 "Noir" Aesthetic
-A clean, dark-mode-first UI designed to minimize distractions. The interface uses a "Ghost" design language—buttons and metadata only appear when you interact with the content.
+### 📰 Editorial Aesthetic
+A light, print-inspired interface: warm paper (`#F6F4F0`), Playfair Display headlines paired with
+Inter for interface text, hairline rules and a single dark-ink accent colour. Posters and the wide
+hero banner carry the mood so the layout itself stays calm and readable.
+
+### 🧭 More Worlds to Explore
+Under every result set, a poster rail suggests adjacent titles drawn from TMDb recommendations —
+so one good show leads to the next.
 
 ---
 
@@ -53,7 +63,8 @@ To use the app, you need a **TMDB API Key**.
 
 ## 🛠️ Tech Stack
 *   **Framework:** React 18 + Vite
-*   **Styling:** Tailwind CSS (Custom "Noir" Config)
+*   **Styling:** Tailwind CSS (custom editorial palette: paper / ink / line)
+*   **Typefaces:** Playfair Display + Inter, self-hosted via `@fontsource` (no external font requests)
 *   **Icons:** Lucide React
 *   **Data:** TMDB API V3
 *   **Deployment:** Vercel

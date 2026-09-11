@@ -1,13 +1,31 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { ArrowLeft, ArrowRight, Loader2, Info, X, MinusCircle, PlusCircle, UserMinus, Search, Layers, GitMerge, Bookmark, LayoutGrid, Clock, RotateCcw } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  ArrowUpDown,
+  Bookmark,
+  Info,
+  SlidersHorizontal,
+  UserMinus,
+} from 'lucide-react';
 import { ApiKeyInput } from './components/ApiKeyInput';
+import { FilterBar } from './components/FilterBar';
+import { FilterPill } from './components/FilterPill';
+import { GenreRail } from './components/GenreRail';
+import { Hero } from './components/Hero';
+import { MoreWorlds } from './components/MoreWorlds';
 import { ShowCard } from './components/ShowCard';
-import { LanguageSelector } from './components/LanguageSelector';
-import { SortSelector } from './components/SortSelector';
-import { YearRangeSelector } from './components/YearRangeSelector';
-import { discoverShows, searchShows } from './services/tmdbService';
+import { SiteHeader } from './components/SiteHeader';
+import { SortPanel, sortLabel } from './components/SortPanel';
+import { StatPair } from './components/ui';
+import { discoverShows, getRecommendations, searchShows } from './services/tmdbService';
 import { TVShow } from './types';
-import { FILTER_CONFIG, POPULAR_GENRES, WATCHLIST_SORT_OPTIONS, DEMO_API_KEY } from './constants';
+import {
+  DEMO_API_KEY,
+  FILTER_CONFIG,
+  GENRE_MAP,
+  WATCHLIST_SORT_OPTIONS,
+} from './constants';
 import { useWatchlist } from './hooks/useWatchlist';
 
 type ViewMode = 'discover' | 'watchlist';
@@ -15,7 +33,7 @@ type ViewMode = 'discover' | 'watchlist';
 const App: React.FC = () => {
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [isDemoMode, setIsDemoMode] = useState(false);
-  
+
   // View State
   const [viewMode, setViewMode] = useState<ViewMode>('discover');
 
@@ -25,78 +43,82 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalPages, setTotalPages] = useState(0);
-  
+  const [totalResults, setTotalResults] = useState<number | null>(null);
+
   // Watchlist State Hook
   const { watchlist } = useWatchlist();
-  
+
   // Search State
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
 
   // 3-State Logic: Included vs Excluded
   const [includedGenres, setIncludedGenres] = useState<number[]>([]);
   const [excludedGenres, setExcludedGenres] = useState<number[]>([]);
-  
+
   // Genre Logic Mode: OR (Any) vs AND (All)
   const [genreMode, setGenreMode] = useState<'OR' | 'AND'>('OR');
 
   // Person Filter State
-  const [selectedPerson, setSelectedPerson] = useState<{id: number, name: string} | null>(null);
+  const [selectedPerson, setSelectedPerson] = useState<{ id: number; name: string } | null>(null);
 
-  // Filter States - Use strings to allow empty input (clearing the field)
+  // Filter States - strings so the fields can be cleared
   const [minVotes, setMinVotes] = useState<string>(String(FILTER_CONFIG.MIN_VOTES));
   const [minRating, setMinRating] = useState<string>(String(FILTER_CONFIG.MIN_RATING));
-  // Language Filters - Multi-select with include/exclude (3-state cycle per language)
-  const [includedLanguages, setIncludedLanguages] = useState<string[]>(['en']); // Default to English as per request
+
+  // Language Filters - multi-select with include/exclude (3-state cycle per language)
+  const [includedLanguages, setIncludedLanguages] = useState<string[]>(['en']);
   const [excludedLanguages, setExcludedLanguages] = useState<string[]>([]);
-  
+
   // Year Range State
   const CURRENT_YEAR = new Date().getFullYear();
-  const MAX_YEAR_LIMIT = CURRENT_YEAR + 5; // Allow looking ahead 5 years for announced shows
+  const MAX_YEAR_LIMIT = CURRENT_YEAR + 5; // Allow looking ahead for announced shows
   const MIN_YEAR_LIMIT = 1900;
   const [yearRange, setYearRange] = useState<[number, number]>([MIN_YEAR_LIMIT, MAX_YEAR_LIMIT]);
 
-  // Sort State - Default to Newest
+  // Sort State - default to Newest
   const [sortBy, setSortBy] = useState<string>('first_air_date.desc');
   const [watchlistSortBy, setWatchlistSortBy] = useState<string>('addedAt.desc');
-  
+
+  // "More Worlds to Explore" rail
+  const [recommendations, setRecommendations] = useState<TVShow[]>([]);
+  const [recommendationsLoading, setRecommendationsLoading] = useState(false);
+
   // Debounced values for API calls (parsed as numbers)
-  const [debouncedFilters, setDebouncedFilters] = useState({ 
-    minVotes: FILTER_CONFIG.MIN_VOTES, 
+  const [debouncedFilters, setDebouncedFilters] = useState({
+    minVotes: FILTER_CONFIG.MIN_VOTES,
     minRating: FILTER_CONFIG.MIN_RATING,
     minYear: MIN_YEAR_LIMIT,
-    maxYear: MAX_YEAR_LIMIT
+    maxYear: MAX_YEAR_LIMIT,
   });
 
-  // Debounce logic for Search Input
+  // Debounce logic for the search input
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
-      if (viewMode === 'discover') setPage(1); // Reset to page 1 when query changes in discover
+      if (viewMode === 'discover') setPage(1);
     }, 500);
     return () => clearTimeout(timer);
   }, [searchQuery, viewMode]);
 
-  // Debounce logic for Numeric Filters & Year Range
+  // Debounce logic for numeric filters & year range
   useEffect(() => {
     const timer = setTimeout(() => {
       const votes = minVotes === '' ? 0 : Number(minVotes);
       const rating = minRating === '' ? 0 : Number(minRating);
 
-      setDebouncedFilters({ 
-        minVotes: isNaN(votes) ? 0 : votes, 
+      setDebouncedFilters({
+        minVotes: isNaN(votes) ? 0 : votes,
         minRating: isNaN(rating) ? 0 : rating,
         minYear: yearRange[0],
-        maxYear: yearRange[1]
+        maxYear: yearRange[1],
       });
-      // Reset to page 1 when filters change
       if (viewMode === 'discover') setPage(1);
     }, 600);
     return () => clearTimeout(timer);
   }, [minVotes, minRating, yearRange, viewMode]);
 
-  // Check local storage for key on mount AND migrate from sessionStorage if needed
+  // Restore a stored key on mount (and migrate the legacy sessionStorage key)
   useEffect(() => {
     const localKey = localStorage.getItem('tmdb_api_key');
     const sessionKey = sessionStorage.getItem('tmdb_api_key');
@@ -105,7 +127,6 @@ const App: React.FC = () => {
       setApiKey(localKey);
       setIsDemoMode(false);
     } else if (sessionKey) {
-      // Migrate legacy key to new storage
       localStorage.setItem('tmdb_api_key', sessionKey);
       setApiKey(sessionKey);
       setIsDemoMode(false);
@@ -131,11 +152,10 @@ const App: React.FC = () => {
     setIsDemoMode(false);
   };
 
-  const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    // Intercept standard left-click to do soft reset (SPA behavior)
-    // Allow Middle-Click / Ctrl-Click to pass through for new tab (Default browser behavior)
-    if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
-      e.preventDefault();
+  const handleLogoClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    // Soft reset for standard left clicks, keep default behaviour for new-tab clicks
+    if (event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
+      event.preventDefault();
       setViewMode('discover');
       setSearchQuery('');
       setPage(1);
@@ -151,12 +171,12 @@ const App: React.FC = () => {
     setError(null);
     try {
       let data;
-      
+
       if (debouncedSearchQuery) {
-        // GLOBAL SEARCH MODE: Ignore all filters, search by text
+        // GLOBAL SEARCH MODE: ignore filters, search by text
         data = await searchShows(apiKey, debouncedSearchQuery, page);
       } else {
-        // DISCOVERY MODE: Use standard filters
+        // DISCOVERY MODE: use the configured filters
         data = await discoverShows(apiKey, page, {
           withGenres: includedGenres,
           withoutGenres: excludedGenres,
@@ -168,47 +188,85 @@ const App: React.FC = () => {
           minYear: debouncedFilters.minYear,
           maxYear: debouncedFilters.maxYear,
           genreMode: genreMode,
-          sortBy: sortBy
+          sortBy: sortBy,
         });
       }
 
       setShows(data.results);
       setTotalPages(data.total_pages);
-      // Scroll to top smoothly
+      setTotalResults(typeof data.total_results === 'number' ? data.total_results : data.results.length);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: any) {
-      if (err.message === "Invalid API Key") {
-         setApiKey(null); // Reset to input screen
-         localStorage.removeItem('tmdb_api_key'); // Clear invalid key
-         setError("Invalid API Key provided. Please try again.");
+      if (err.message === 'Invalid API Key') {
+        setApiKey(null); // Reset to the input screen
+        localStorage.removeItem('tmdb_api_key'); // Clear the invalid key
+        setError('Invalid API Key provided. Please try again.');
       } else {
-        setError("Failed to fetch shows. Please try again later.");
+        setError('Failed to fetch shows. Please try again later.');
       }
     } finally {
       setLoading(false);
     }
-  }, [apiKey, page, includedGenres, excludedGenres, debouncedFilters, includedLanguages, excludedLanguages, selectedPerson, debouncedSearchQuery, genreMode, sortBy, viewMode]);
+  }, [
+    apiKey,
+    page,
+    includedGenres,
+    excludedGenres,
+    debouncedFilters,
+    includedLanguages,
+    excludedLanguages,
+    selectedPerson,
+    debouncedSearchQuery,
+    genreMode,
+    sortBy,
+    viewMode,
+  ]);
 
-  // Trigger fetch when dependencies change in Discover mode
+  // Trigger a fetch when dependencies change in Discover mode
   useEffect(() => {
     if (apiKey && viewMode === 'discover') {
       loadData();
     }
   }, [loadData, apiKey, viewMode]);
 
+  // --- MORE WORLDS RAIL ---
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!apiKey || viewMode !== 'discover' || shows.length === 0) {
+      setRecommendations([]);
+      setRecommendationsLoading(false);
+      return;
+    }
+
+    const visibleIds = new Set(shows.map((show) => show.id));
+    setRecommendationsLoading(true);
+
+    getRecommendations(apiKey, shows[0].id)
+      .then((results) => {
+        if (cancelled) return;
+        setRecommendations(results.filter((item) => !visibleIds.has(item.id)));
+      })
+      .finally(() => {
+        if (!cancelled) setRecommendationsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [shows, apiKey, viewMode]);
+
   // --- WATCHLIST LOGIC ---
   const sortedWatchlist = useMemo(() => {
     let list = [...watchlist];
 
-    // Filter by search query if present
     if (debouncedSearchQuery) {
-      const q = debouncedSearchQuery.toLowerCase();
-      list = list.filter(item => item.name.toLowerCase().includes(q));
+      const query = debouncedSearchQuery.toLowerCase();
+      list = list.filter((item) => item.name.toLowerCase().includes(query));
     }
 
-    // Sort Logic
     const [field, direction] = watchlistSortBy.split('.');
-    
+
     list.sort((a, b) => {
       let valA: any, valB: any;
 
@@ -234,9 +292,8 @@ const App: React.FC = () => {
 
       if (direction === 'asc') {
         return valA > valB ? 1 : -1;
-      } else {
-        return valA < valB ? 1 : -1;
       }
+      return valA < valB ? 1 : -1;
     });
 
     return list;
@@ -251,12 +308,12 @@ const App: React.FC = () => {
   // --- HANDLERS ---
   const handleGenreToggle = (id: number) => {
     if (includedGenres.includes(id)) {
-        setIncludedGenres(prev => prev.filter(g => g !== id));
-        setExcludedGenres(prev => [...prev, id]);
+      setIncludedGenres((prev) => prev.filter((genre) => genre !== id));
+      setExcludedGenres((prev) => [...prev, id]);
     } else if (excludedGenres.includes(id)) {
-        setExcludedGenres(prev => prev.filter(g => g !== id));
+      setExcludedGenres((prev) => prev.filter((genre) => genre !== id));
     } else {
-        setIncludedGenres(prev => [...prev, id]);
+      setIncludedGenres((prev) => [...prev, id]);
     }
     setPage(1);
   };
@@ -271,14 +328,11 @@ const App: React.FC = () => {
   // --- LANGUAGE LOGIC (3-state cycle: include -> exclude -> off) ---
   const handleLanguageToggle = (code: string) => {
     if (includedLanguages.includes(code)) {
-      // Include -> Exclude
-      setIncludedLanguages(includedLanguages.filter(c => c !== code));
+      setIncludedLanguages(includedLanguages.filter((item) => item !== code));
       setExcludedLanguages([...excludedLanguages, code]);
     } else if (excludedLanguages.includes(code)) {
-      // Exclude -> Off
-      setExcludedLanguages(excludedLanguages.filter(c => c !== code));
+      setExcludedLanguages(excludedLanguages.filter((item) => item !== code));
     } else {
-      // Off -> Include
       setIncludedLanguages([...includedLanguages, code]);
     }
     setPage(1);
@@ -291,479 +345,304 @@ const App: React.FC = () => {
   };
 
   const toggleGenreMode = () => {
-      setGenreMode(prev => prev === 'OR' ? 'AND' : 'OR');
-      setPage(1);
-  };
-
-  // --- NUMERIC FILTERS RESET ---
-  const isNumericFilterActive = useMemo(() => {
-    const currentRating = Number(minRating);
-    const currentVotes = Number(minVotes);
-    const isYearDefault = yearRange[0] === MIN_YEAR_LIMIT && yearRange[1] === MAX_YEAR_LIMIT;
-    
-    return currentRating !== FILTER_CONFIG.MIN_RATING || 
-           currentVotes !== FILTER_CONFIG.MIN_VOTES || 
-           !isYearDefault;
-  }, [minRating, minVotes, yearRange, MIN_YEAR_LIMIT, MAX_YEAR_LIMIT]);
-
-  const resetNumericFilters = () => {
-    setMinRating(String(FILTER_CONFIG.MIN_RATING));
-    setMinVotes(String(FILTER_CONFIG.MIN_VOTES));
-    setYearRange([MIN_YEAR_LIMIT, MAX_YEAR_LIMIT]);
+    setGenreMode((prev) => (prev === 'OR' ? 'AND' : 'OR'));
     setPage(1);
   };
+
+  const isSearching = Boolean(debouncedSearchQuery);
+  const moreWorldsGenre = useMemo(() => {
+    const firstGenreId = shows[0]?.genre_ids?.[0];
+    return firstGenreId ? GENRE_MAP[firstGenreId] : null;
+  }, [shows]);
 
   if (!apiKey) {
     return <ApiKeyInput onSetKey={handleSetKey} onEnterDemo={handleEnterDemo} error={error} />;
   }
 
-  const renderGenreSummary = () => {
-    if (debouncedSearchQuery) return null;
-
-    const hasIncluded = includedGenres.length > 0;
-    const hasExcluded = excludedGenres.length > 0;
-    const hasPerson = !!selectedPerson;
-
-    if (!hasIncluded && !hasExcluded && !hasPerson) return <span className="text-gray-300">All</span>;
-
-    const parts = [];
-
-    if (hasPerson) {
-      parts.push(<span key="person" className="text-purple-400 font-bold whitespace-nowrap">Starring {selectedPerson.name}</span>);
-    }
-
-    const includedNames = POPULAR_GENRES
-        .filter(g => includedGenres.includes(g.id))
-        .map(g => g.name)
-        .filter((value, index, self) => self.indexOf(value) === index);
-    
-    if (includedNames.length > 0) {
-       const joinText = genreMode === 'AND' ? ' + ' : ' / ';
-       parts.push(
-          <span key="inc" className="text-gray-300 whitespace-nowrap">
-             {includedNames.join(joinText)}
-             {includedNames.length > 1 && (
-                 <span className="text-[9px] text-gray-500 ml-1 border border-gray-700 px-1 rounded align-middle">
-                     {genreMode === 'AND' ? 'ALL' : 'ANY'}
-                 </span>
-             )}
-          </span>
-       );
-    }
-
-    const excludedNames = POPULAR_GENRES
-        .filter(g => excludedGenres.includes(g.id))
-        .map(g => g.name)
-        .filter((value, index, self) => self.indexOf(value) === index);
-    
-    if (excludedNames.length > 0) {
-       parts.push(<span key="exc" className="text-red-400 line-through decoration-red-900 decoration-2 whitespace-nowrap">{excludedNames.join(', ')}</span>);
-    }
-
-    return (
-        <div className="flex items-center gap-x-2 overflow-hidden">
-            {parts.map((part, i) => (
-              <React.Fragment key={i}>
-                {i > 0 && <span className="text-gray-600 flex-shrink-0">|</span>}
-                {part}
-              </React.Fragment>
-            ))}
-        </div>
-    );
-  };
+  // Column wrappers reproduce the reference's split rule; `flex` lets both
+  // cards in a row share the same height.
+  const gridWrapperClass = (index: number) =>
+    index % 2 === 1
+      ? 'flex lg:border-l lg:border-line lg:pl-10 xl:pl-12 2xl:pl-14'
+      : 'flex lg:pr-10 xl:pr-12 2xl:pr-14';
 
   return (
-    <div className="min-h-screen bg-[#050505] text-gray-100 p-6 md:p-12 font-sans selection:bg-white selection:text-black">
-      
-      {/* Header */}
-      <header className="max-w-5xl mx-auto mb-8 border-b border-gray-900 pb-8 relative z-50">
-         <div className="absolute top-0 right-0 z-10 flex gap-4 items-center">
-             {isDemoMode ? (
-               <span className="px-2 py-1 bg-yellow-900/20 border border-yellow-700 text-yellow-500 text-[10px] font-bold tracking-widest uppercase rounded-sm animate-fade-in">
-                 Demo Mode
-               </span>
-             ) : (
-               <span className="px-2 py-1 bg-green-900/20 border border-green-700 text-green-500 text-[10px] font-bold tracking-widest uppercase rounded-sm animate-fade-in">
-                 Pro Mode
-               </span>
-             )}
-             
-             <button 
-                onClick={handleResetKey}
-                className="text-xs text-gray-500 hover:text-white uppercase font-mono tracking-widest transition-colors"
-             >
-                Reset Key
-             </button>
-         </div>
+    <div className="min-h-screen bg-paper font-sans text-ink">
+      <SiteHeader
+        viewMode={viewMode}
+        onViewChange={(view) => {
+          setViewMode(view);
+          setPage(1);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        watchlistCount={watchlist.length}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder={
+          viewMode === 'discover' ? 'Search TV shows, genres, people…' : 'Filter my list…'
+        }
+        isDemoMode={isDemoMode}
+        onLogoClick={handleLogoClick}
+        onResetKey={handleResetKey}
+      />
 
-        <div className="flex flex-col md:flex-row justify-between items-end gap-6 pt-6">
-          <div className="w-full md:w-auto">
-            <h1 className="text-4xl md:text-6xl font-thin tracking-[-0.08em] text-white mb-4">
-              <a 
-                href="/" 
-                onClick={handleLogoClick}
-                className="text-white hover:opacity-80 transition-opacity hover:no-underline cursor-pointer"
+      {viewMode === 'discover' ? (
+        <Hero
+          eyebrow="Television for curious minds"
+          title="Discover what’s next."
+          sideLines={['Bolder', 'Stories', 'Brighter', 'Horizons']}
+        />
+      ) : (
+        <Hero
+          eyebrow="Your curated backlog"
+          title="My List."
+          sideLines={[
+            `${watchlistStats.totalShows} shows`,
+            `${watchlistStats.totalBingeHours} hours`,
+            'Binge',
+            'liability',
+          ]}
+        />
+      )}
+
+      {viewMode === 'discover' ? (
+        <>
+          <div className="mt-6 md:mt-7">
+            <FilterBar
+              minRating={minRating}
+              onMinRatingChange={setMinRating}
+              minVotes={minVotes}
+              onMinVotesChange={setMinVotes}
+              yearRange={yearRange}
+              minYear={MIN_YEAR_LIMIT}
+              maxYear={MAX_YEAR_LIMIT}
+              onYearRangeChange={setYearRange}
+              includedLanguages={includedLanguages}
+              excludedLanguages={excludedLanguages}
+              onLanguageToggle={handleLanguageToggle}
+              onLanguagesClear={clearLanguages}
+              sortBy={sortBy}
+              onSortChange={(value) => {
+                setSortBy(value);
+                setPage(1);
+              }}
+              genreMode={genreMode}
+              onGenreModeToggle={toggleGenreMode}
+              resultsCount={totalResults}
+              isSearching={isSearching}
+              searchQuery={debouncedSearchQuery}
+            />
+          </div>
+
+          <div
+            className={`mt-10 transition-opacity duration-500 md:mt-12 ${
+              isSearching ? 'pointer-events-none opacity-35' : 'opacity-100'
+            }`}
+          >
+            <GenreRail
+              includedGenres={includedGenres}
+              excludedGenres={excludedGenres}
+              onToggle={handleGenreToggle}
+              onClear={clearGenres}
+            />
+          </div>
+
+          {selectedPerson && (
+            <div className="mx-auto mt-4 max-w-[1560px] px-6 md:px-10">
+              <button
+                type="button"
+                onClick={() => setSelectedPerson(null)}
+                className="inline-flex animate-fade-in items-center gap-2 rounded-full border border-ink bg-ink px-4 py-2 text-[10.5px] uppercase tracking-[0.16em] text-white"
               >
-                CULTIVATED<span className="font-black">TV</span>
-              </a>
-            </h1>
-
-            {/* VIEW MODE TOGGLE */}
-            <div className="flex items-center gap-4 mb-6">
-               <button 
-                 onClick={() => setViewMode('discover')}
-                 className={`flex items-center gap-2 text-xs font-mono uppercase tracking-widest transition-colors pb-1 border-b-2 ${viewMode === 'discover' ? 'text-white border-white' : 'text-gray-500 border-transparent hover:text-gray-400'}`}
-               >
-                 <LayoutGrid size={12} /> Discover
-               </button>
-               <span className="text-gray-800">|</span>
-               <button 
-                 onClick={() => setViewMode('watchlist')}
-                 className={`flex items-center gap-2 text-xs font-mono uppercase tracking-widest transition-colors pb-1 border-b-2 ${viewMode === 'watchlist' ? 'text-white border-white' : 'text-gray-500 border-transparent hover:text-gray-400'}`}
-               >
-                 <Bookmark size={12} /> My List <span className="text-gray-500">({watchlist.length})</span>
-               </button>
+                <UserMinus size={12} />
+                Starring {selectedPerson.name}
+              </button>
             </div>
-            
-            {/* Filter Summary (Only visible in Discover Mode & No Search) */}
-            {viewMode === 'discover' && (
-              <div className={`flex flex-col gap-2 text-xs font-mono text-gray-500 tracking-widest uppercase transition-all duration-500 ${debouncedSearchQuery ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100 h-auto'}`}>
-                 <div className="flex items-center gap-2 max-w-xl overflow-hidden">
-                   <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></span>
-                   <div className="flex items-center gap-2 whitespace-nowrap overflow-hidden text-ellipsis w-full">
-                     <span className="flex-shrink-0">Filters:</span>
-                     {renderGenreSummary()}
-                   </div>
-                 </div>
-                 
-                 <div className="flex flex-wrap items-center gap-4 md:gap-6 mt-1">
-                   {/* Rating Input */}
-                   <div className="flex items-center gap-2">
-                     <span className="w-2 h-2 bg-yellow-600 rounded-full"></span>
-                     <label className="flex items-center gap-2 cursor-pointer group">
-                       <span className="text-gray-500 transition-colors group-hover:text-gray-400">Rating &ge;</span>
-                       <input 
-                         type="number"
-                         min="0"
-                         max="10"
-                         step="0.1"
-                         value={minRating}
-                         onChange={(e) => setMinRating(e.target.value)}
-                         className="bg-transparent border-b border-gray-800 text-white w-12 text-center focus:outline-none focus:border-yellow-600 transition-colors font-mono font-bold"
-                         placeholder="0"
-                       />
-                     </label>
-                   </div>
+          )}
+        </>
+      ) : (
+        <div className="mx-auto mt-6 max-w-[1560px] px-6 md:mt-7 md:px-10">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className="mr-1 flex items-center gap-2.5 border-r border-line pr-5 text-[11.5px] font-semibold uppercase tracking-[0.2em] text-ink">
+              <SlidersHorizontal size={15} className="text-ink-soft" />
+              Library
+            </span>
 
-                   {/* Votes Input */}
-                   <div className="flex items-center gap-2">
-                     <span className="w-2 h-2 bg-gray-600 rounded-full"></span>
-                     <label className="flex items-center gap-2 cursor-pointer group">
-                       <span className="text-gray-500 transition-colors group-hover:text-gray-400">Votes &ge;</span>
-                       <input 
-                         type="number"
-                         min="0"
-                         step="1"
-                         value={minVotes}
-                         onChange={(e) => setMinVotes(e.target.value)}
-                         className="bg-transparent border-b border-gray-800 text-white w-16 text-center focus:outline-none focus:border-gray-500 transition-colors font-mono font-bold"
-                         placeholder="0"
-                       />
-                     </label>
-                   </div>
-                   
-                   {/* Year Range Selector */}
-                   <YearRangeSelector
-                      minYear={MIN_YEAR_LIMIT}
-                      maxYear={MAX_YEAR_LIMIT}
-                      selectedRange={yearRange}
-                      onChange={setYearRange}
-                   />
+            <FilterPill
+              icon={ArrowUpDown}
+              iconClassName="text-ink-soft"
+              value={sortLabel(WATCHLIST_SORT_OPTIONS, watchlistSortBy)}
+              title="Sort my list"
+              panelClassName="w-[260px]"
+            >
+              {(close) => (
+                <SortPanel
+                  selectedSort={watchlistSortBy}
+                  onSelect={setWatchlistSortBy}
+                  options={WATCHLIST_SORT_OPTIONS}
+                  onClose={close}
+                />
+              )}
+            </FilterPill>
 
-                   {/* Numeric Reset Button */}
-                   {isNumericFilterActive && (
-                     <button
-                        onClick={resetNumericFilters}
-                        className="flex items-center gap-1 text-[10px] font-mono uppercase tracking-widest text-red-500/70 hover:text-red-500 transition-colors animate-fade-in"
-                        title="Reset Rating, Votes & Year"
-                     >
-                        <RotateCcw size={10} /> RESET
-                     </button>
-                   )}
-                   
-                   {/* Discover Sort Selector */}
-                   <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
-                      <SortSelector 
-                          selectedSort={sortBy} 
-                          onSelect={(val) => { setSortBy(val); setPage(1); }} 
-                      />
-                   </div>
-
-                   {/* Language Selector */}
-                   <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 bg-purple-400 rounded-full"></span>
-                      <LanguageSelector
-                          includedLangs={includedLanguages}
-                          excludedLangs={excludedLanguages}
-                          onToggle={handleLanguageToggle}
-                          onClear={clearLanguages}
-                      />
-                   </div>
-                 </div>
-              </div>
-            )}
-
-            {/* WATCHLIST STATS HEADER */}
-            {viewMode === 'watchlist' && (
-               <div className="flex flex-wrap items-center gap-6 mt-2 animate-fade-in">
-                  <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-gray-400 border border-gray-800 px-3 py-2 rounded-sm">
-                     <Layers size={14} className="text-white" />
-                     <span>Total Shows: <span className="text-white font-bold">{watchlistStats.totalShows}</span></span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-gray-400 border border-gray-800 px-3 py-2 rounded-sm" title="Estimated time to finish current backlog">
-                     <Clock size={14} className="text-blue-400" />
-                     <span>Binge Liability: <span className="text-white font-bold">{watchlistStats.totalBingeHours} Hrs</span></span>
-                  </div>
-
-                  {/* Watchlist Sort Selector */}
-                  <div className="ml-auto flex items-center gap-2">
-                      <SortSelector 
-                          selectedSort={watchlistSortBy} 
-                          onSelect={(val) => setWatchlistSortBy(val)}
-                          options={WATCHLIST_SORT_OPTIONS}
-                      />
-                   </div>
-               </div>
-            )}
-
-            {/* Search Active Indicator */}
-            {debouncedSearchQuery && (
-              <div className="text-xs font-mono text-white tracking-widest uppercase animate-fade-in mt-2 flex items-center gap-2">
-                <Search size={12} className="text-yellow-500" />
-                {viewMode === 'discover' 
-                  ? <span>Searching Global Database: <span className="text-yellow-500">"{debouncedSearchQuery}"</span></span>
-                  : <span>Searching My List: <span className="text-yellow-500">"{debouncedSearchQuery}"</span></span>
-                }
-              </div>
-            )}
-          </div>
-
-          <div className="flex flex-col items-end gap-4 flex-shrink-0">
-             {/* Search Input & Toggle */}
-             <div className="flex items-center gap-4 h-8">
-                <div className={`flex items-center overflow-hidden transition-all duration-500 ease-in-out bg-black border-gray-800 ${isSearchOpen ? 'w-64 border-b opacity-100' : 'w-0 border-b-0 opacity-0'}`}>
-                    <input 
-                        type="text" 
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder={viewMode === 'discover' ? "Search global database..." : "Filter my list..."}
-                        className="bg-transparent text-white w-full px-2 py-1 font-mono text-xs focus:outline-none placeholder-gray-700"
-                        autoFocus={isSearchOpen}
-                    />
-                    {searchQuery && (
-                        <button onClick={() => setSearchQuery('')} className="text-gray-500 hover:text-white px-2">
-                            <X size={12} />
-                        </button>
-                    )}
-                </div>
-                
-                <button 
-                  onClick={() => setIsSearchOpen(!isSearchOpen)}
-                  className={`transition-colors duration-300 ${isSearchOpen || debouncedSearchQuery ? 'text-white' : 'text-gray-500 hover:text-white'}`}
-                  title="Toggle Search"
-                >
-                  <Search size={20} strokeWidth={1.5} />
-                </button>
-             </div>
-             
-             {viewMode === 'discover' && (
-                <div className="text-gray-500 font-mono text-xs text-right">
-                  PAGE {page} <span className="text-gray-800">/</span> {totalPages}
-                </div>
-             )}
-          </div>
-        </div>
-      </header>
-
-      {/* Filter Section Container (Dimmed when Searching) - Only in Discover Mode */}
-      {viewMode === 'discover' && (
-        <div className={`transition-all duration-700 ease-in-out ${debouncedSearchQuery ? 'opacity-20 pointer-events-none grayscale blur-[1px]' : 'opacity-100'}`}>
-          
-          {/* Genre Filter Bar - Increased Bottom Spacing */}
-          <div className="max-w-5xl mx-auto mb-20 border-b border-gray-900 pb-6">
-            
-            {/* CONTROL ROW: Always visible to prevent layout shift */}
-            <div className="flex items-center gap-4 mb-4 min-h-[32px]">
-                 
-                 {/* Genre Logic Toggle - Always Visible (Anchor) */}
-                  <button
-                      onClick={toggleGenreMode}
-                      className="px-3 py-1.5 text-[10px] font-mono uppercase tracking-widest border border-blue-900 text-blue-400 hover:bg-blue-900/10 transition-all duration-300 flex items-center gap-1"
-                      title={genreMode === 'OR' ? 'Match Any Selected Genre' : 'Match All Selected Genres'}
-                  >
-                      {genreMode === 'OR' ? <Layers size={10} /> : <GitMerge size={10} />}
-                      MATCH: {genreMode === 'OR' ? 'ANY' : 'ALL'}
-                  </button>
-
-                {/* Clear Button - Conditional */}
-                {(includedGenres.length > 0 || excludedGenres.length > 0 || selectedPerson) && (
-                    <button
-                      onClick={clearGenres}
-                      className="px-3 py-1.5 text-[10px] font-mono uppercase tracking-widest border border-red-900 text-red-500 hover:bg-red-900/10 transition-all duration-300 flex items-center gap-1 animate-fade-in"
-                    >
-                      <X size={10} /> Clear
-                    </button>
-                )}
-
-                 {/* Active Person Pill - Conditional */}
-                {selectedPerson && (
-                  <button
-                      onClick={() => setSelectedPerson(null)}
-                      className="px-3 py-1.5 text-[10px] font-mono uppercase tracking-widest border border-purple-500 text-purple-400 bg-purple-900/10 hover:bg-purple-900/20 transition-all duration-300 flex items-center gap-1.5 animate-fade-in"
-                  >
-                      <UserMinus size={10} />
-                      {selectedPerson.name}
-                  </button>
-                )}
-            </div>
-
-            {/* GENRE LIST: Static Flex Container */}
-            <div className="flex flex-wrap gap-2 items-center">
-              {POPULAR_GENRES.map((genre) => {
-                const isIncluded = includedGenres.includes(genre.id);
-                const isExcluded = excludedGenres.includes(genre.id);
-                
-                let buttonClass = 'bg-transparent text-gray-500 border-gray-800 hover:border-gray-500 hover:text-gray-300'; // Default
-                if (isIncluded) {
-                    buttonClass = 'bg-white text-black border-white font-bold';
-                } else if (isExcluded) {
-                    buttonClass = 'bg-red-900/10 text-red-500 border-red-500/50 hover:border-red-500 hover:bg-red-900/20 line-through decoration-red-500/50';
-                }
-                
-                return (
-                  <button
-                    key={`${genre.id}-${genre.name}`}
-                    onClick={() => handleGenreToggle(genre.id)}
-                    className={`px-3 py-1.5 text-[10px] font-mono uppercase tracking-widest border transition-all duration-300 flex items-center gap-1.5 ${buttonClass}`}
-                  >
-                    {isIncluded && <PlusCircle size={8} />}
-                    {isExcluded && <MinusCircle size={8} />}
-                    {genre.name}
-                  </button>
-                );
-              })}
+            <div className="ml-auto flex items-center gap-6">
+              <StatPair label="Total shows" value={String(watchlistStats.totalShows)} />
+              <StatPair label="Binge liability" value={`${watchlistStats.totalBingeHours} hrs`} />
+              <span className="whitespace-nowrap text-[13px] text-muted">
+                {sortedWatchlist.length} in list
+              </span>
             </div>
           </div>
         </div>
       )}
 
-      {/* Content Area */}
-      <main className="max-w-5xl mx-auto min-h-[50vh] relative z-0">
-        {/* DISCOVER VIEW */}
-        {viewMode === 'discover' && (
-           <>
-              {loading ? (
-                <div className="flex flex-col items-center justify-center h-64 gap-4 text-gray-600 animate-pulse">
-                  <Loader2 className="animate-spin" size={32} />
-                  <span className="font-mono text-xs uppercase tracking-widest">
-                    {debouncedSearchQuery ? 'Searching Database...' : 'Discovering...'}
-                  </span>
-                </div>
-              ) : error ? (
-                 <div className="flex flex-col items-center justify-center h-64 gap-4 text-red-500">
-                   <Info size={32} />
-                   <p className="font-mono text-sm">{error}</p>
-                   <button 
-                      onClick={() => loadData()}
-                      className="text-xs border border-red-900 px-4 py-2 hover:bg-red-900/20 transition-colors uppercase"
-                   >
-                      Retry
-                   </button>
-                 </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-12">
-                  {shows.map((show) => (
-                    <ShowCard 
-                      key={show.id} 
-                      show={show} 
-                      apiKey={apiKey} 
-                    />
+      {/* Content */}
+      <main className="mx-auto mt-16 max-w-[1560px] px-6 md:px-10 lg:mt-20">
+        {viewMode === 'discover' ? (
+          <>
+            {loading ? (
+              <div className="grid grid-cols-1 gap-y-14 lg:grid-cols-2 lg:gap-y-16">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div
+                    key={`skeleton-${index}`}
+                    className={`flex flex-col gap-6 sm:flex-row sm:gap-7 lg:gap-8 xl:gap-10 ${gridWrapperClass(index)}`}
+                  >
+                    <div className="aspect-[2/3] w-full shrink-0 animate-shimmer rounded-[12px] bg-[#EAE6DF] sm:w-[200px] md:w-[220px] lg:w-[176px] xl:w-[200px] 2xl:w-[244px]" />
+                    <div className="flex-1 space-y-4 pt-1">
+                      <div className="h-2.5 w-28 animate-shimmer rounded-full bg-[#EAE6DF]" />
+                      <div className="h-8 w-2/3 animate-shimmer rounded-lg bg-[#EAE6DF]" />
+                      <div className="h-2.5 w-40 animate-shimmer rounded-full bg-[#EAE6DF]" />
+                      <div className="space-y-2 pt-3">
+                        <div className="h-2.5 w-full animate-shimmer rounded-full bg-[#EAE6DF]" />
+                        <div className="h-2.5 w-full animate-shimmer rounded-full bg-[#EAE6DF]" />
+                        <div className="h-2.5 w-4/5 animate-shimmer rounded-full bg-[#EAE6DF]" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : error ? (
+              <div className="flex flex-col items-center justify-center gap-5 py-24 text-center">
+                <Info size={26} className="text-negative" />
+                <p className="text-[13px] text-ink-soft">{error}</p>
+                <button
+                  type="button"
+                  onClick={() => loadData()}
+                  className="h-10 rounded-lg bg-ink px-5 text-[10.5px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-[#2C2A26]"
+                >
+                  Try again
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 gap-y-14 lg:grid-cols-2 lg:gap-y-16">
+                  {shows.map((show, index) => (
+                    <div key={show.id} className={gridWrapperClass(index)}>
+                      <ShowCard show={show} apiKey={apiKey} />
+                    </div>
                   ))}
                 </div>
-              )}
 
-              {!loading && !error && shows.length === 0 && (
-                <div className="text-center py-20 text-gray-600 font-mono text-sm">
-                  {debouncedSearchQuery 
-                    ? `No results found for "${debouncedSearchQuery}"`
-                    : "No results found matching this criteria."}
-                </div>
-              )}
-           </>
-        )}
+                {shows.length === 0 && (
+                  <div className="py-24 text-center">
+                    <p className="font-display text-[24px] text-ink">
+                      {isSearching ? `No results for “${debouncedSearchQuery}”` : 'Nothing matches those filters.'}
+                    </p>
+                    <p className="mt-3 text-[12px] uppercase tracking-[0.2em] text-muted">
+                      Loosen a filter and try again
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
 
-        {/* WATCHLIST VIEW */}
-        {viewMode === 'watchlist' && (
-           <>
-              {sortedWatchlist.length > 0 ? (
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-12 animate-fade-in-up">
-                    {sortedWatchlist.map((show) => (
-                      <ShowCard 
-                        key={show.id} 
-                        show={show} 
-                        apiKey={apiKey} 
-                      />
-                    ))}
-                 </div>
-              ) : (
-                 <div className="flex flex-col items-center justify-center h-96 text-center animate-fade-in">
-                    <Bookmark size={48} className="text-gray-800 mb-6" strokeWidth={1} />
-                    <h3 className="text-xl text-gray-400 font-thin mb-2">Your backlog is empty.</h3>
-                    <p className="text-sm text-gray-600 font-mono uppercase tracking-widest">Go hunt for shows.</p>
-                    <button 
-                       onClick={() => setViewMode('discover')}
-                       className="mt-8 border border-gray-700 text-gray-400 px-6 py-2 hover:bg-gray-800 hover:text-white transition-colors text-xs font-mono uppercase tracking-widest"
-                    >
-                       Start Hunting
-                    </button>
-                 </div>
-              )}
-           </>
+            {!loading && !error && (
+              <MoreWorlds
+                recommendations={recommendations}
+                loading={recommendationsLoading}
+                eyebrow={
+                  moreWorldsGenre
+                    ? `Because you explored ${moreWorldsGenre}`
+                    : 'Because you have taste'
+                }
+                onSelect={(show) => {
+                  setSearchQuery(show.name);
+                  setViewMode('discover');
+                  setPage(1);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+              />
+            )}
+          </>
+        ) : (
+          <>
+            {sortedWatchlist.length > 0 ? (
+              <div className="grid grid-cols-1 gap-y-14 lg:grid-cols-2 lg:gap-y-16">
+                {sortedWatchlist.map((show, index) => (
+                  <div key={show.id} className={gridWrapperClass(index)}>
+                    <ShowCard show={show} apiKey={apiKey} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-24 text-center">
+                <Bookmark size={34} className="mb-6 text-line-strong" strokeWidth={1.2} />
+                <h3 className="font-display text-[28px] text-ink">Your backlog is empty.</h3>
+                <p className="mt-3 text-[11px] uppercase tracking-[0.24em] text-muted">
+                  Go hunt for shows
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('discover')}
+                  className="mt-8 h-10 rounded-lg border border-line px-5 text-[10.5px] font-bold uppercase tracking-[0.2em] text-ink-soft transition-colors hover:border-line-strong hover:text-ink"
+                >
+                  Start hunting
+                </button>
+              </div>
+            )}
+          </>
         )}
       </main>
 
-      {/* Pagination - Only for Discover */}
+      {/* Pagination - discover only */}
       {viewMode === 'discover' && !loading && !error && shows.length > 0 && (
-        <div className="max-w-5xl mx-auto mt-20 pt-8 border-t border-gray-900 flex justify-between items-center">
-          <button 
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="group flex items-center gap-3 text-gray-500 hover:text-white transition-colors uppercase text-xs font-mono tracking-widest disabled:opacity-30 disabled:hover:text-gray-500"
-          >
-            <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
-            Previous
-          </button>
-          
-          <div className="hidden md:flex gap-2">
-             {[...Array(3)].map((_, i) => (
-                 <div key={i} className={`w-1 h-1 rounded-full ${i === 1 ? 'bg-white' : 'bg-gray-800'}`}></div>
-             ))}
-          </div>
+        <div className="mx-auto mt-20 max-w-[1560px] px-6 md:px-10">
+          <div className="flex items-center justify-between gap-6 border-t border-line pt-8">
+            <button
+              type="button"
+              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+              disabled={page === 1}
+              className="group flex items-center gap-3 text-[10.5px] font-semibold uppercase tracking-[0.2em] text-muted transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:text-muted"
+            >
+              <ArrowLeft size={14} className="transition-transform group-hover:-translate-x-1" />
+              Previous
+            </button>
 
-          <button 
-            onClick={() => setPage(p => p + 1)}
-            disabled={page >= totalPages}
-            className="group flex items-center gap-3 text-gray-500 hover:text-white transition-colors uppercase text-xs font-mono tracking-widest disabled:opacity-30 disabled:hover:text-gray-500"
-          >
-            Next Page
-            <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-          </button>
+            <span className="text-[10.5px] uppercase tracking-[0.24em] text-muted">
+              Page <span className="text-ink">{page}</span>
+              <span className="mx-1.5 text-line-strong">/</span>
+              {totalPages || '—'}
+            </span>
+
+            <button
+              type="button"
+              onClick={() => setPage((prev) => prev + 1)}
+              disabled={page >= totalPages}
+              className="group flex items-center gap-3 text-[10.5px] font-semibold uppercase tracking-[0.2em] text-muted transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:text-muted"
+            >
+              Next page
+              <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
+            </button>
+          </div>
         </div>
       )}
-      
-      <footer className="max-w-5xl mx-auto mt-24 text-center text-[10px] text-gray-800 uppercase tracking-widest font-mono">
-         Powered by TMDb &bull; Cultivated Selection
+
+      <footer className="mx-auto mt-24 max-w-[1560px] px-6 pb-12 md:px-10">
+        <div className="border-t border-line pt-8 text-center">
+          <p className="text-[9.5px] uppercase tracking-[0.3em] text-faint">
+            Powered by TMDb · Cultivated selection
+          </p>
+        </div>
       </footer>
     </div>
   );
