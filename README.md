@@ -1,82 +1,139 @@
-# CULTIVATED TV 📺
+# CABINET
 
-**The "Noir" Discovery Dashboard for Stremio Power Users.**
+**A TV series discovery journal.**
 
-[**🚀 Launch App**](https://cultivated-tv.vercel.app/)
-
-![App Screenshot](https://raw.githubusercontent.com/Sisyphus93/cultivated-tv/refs/heads/main/homepage.jpg)
-
-## 🧐 What is this?
-**Cultivated TV** is a custom-built discovery engine designed to replace the standard Stremio browsing experience. It focuses on deep filtering, data transparency, and binge planning.
-
-It was built to answer three questions:
-1. *"How long will this show actually take to finish?"*
-2. *"Can I find a Sci-Fi show that ISN'T an Anime?"*
-3. *"Can I filter my backlog by the shortest binge time?"*
-
-## ✨ Key Features
-
-### 📉 Binge Liability Calculator
-Stop guessing. The app calculates the total runtime of every show (e.g., *The Office* = 140 Hours, *Chernobyl* = 5 Hours) so you know the commitment before you start.
-
-### 🔍 Precision Filtering
-Standard filters aren't enough. Cultivated TV offers:
-*   **Include/Exclude:** Want *Action* but hate *Superhero* movies? You can strictly exclude genres.
-*   **Multi-Language:** Select several original languages at once (e.g., *English + Korean + Japanese*), or exclude the ones you don't want (everything *except* Anime staples like Japanese). Click a language once to include it, again to exclude it.
-*   **Logic Control:** Toggle between **MATCH: ANY** (Broad) and **MATCH: ALL** (Strict) logic.
-*   **Era Slider:** A dual-handle slider to filter by specific decades (1900–2031).
-
-### 🔗 Stremio Deep Linking
-Found something you like? Click the **"Play on Stremio"** button to instantly open the show in your desktop or mobile Stremio app.
-
-### 📊 The Library (Watchlist)
-A local, privacy-focused watchlist that lets you:
-*   **Sort by "Shortest Binge":** Clear your backlog by knocking out short shows first.
-*   **Track Stats:** See your total "Binge Liability" in hours.
-
-### 🔦 "Noir" Aesthetic
-A clean, dark-mode-first UI designed to minimize distractions. The interface uses a "Ghost" design language—buttons and metadata only appear when you interact with the content.
+> *"Not a streaming service. A reading room with screens."*
 
 ---
 
-## 🔐 Privacy & BYOK (Bring Your Own Key)
-This application is **Client-Side Only**. There is no backend server tracking your searches.
+## What changed
 
-To use the app, you need a **TMDB API Key**.
-1.  The app uses *your* key to fetch data directly from The Movie Database.
-2.  Your key is stored in your browser's `localStorage`.
-3.  It is never sent to any third-party server.
+This repository began life as **Cultivated TV**, a dark "noir" discovery dashboard. It has
+been rebuilt as **Cabinet**: the same discovery engine underneath, but the interface is now
+set like a printed film quarterly — aged paper, walnut ink, three typefaces, and no
+algorithm-shaped furniture.
 
-[**👉 Get a free TMDB API Key here**](https://www.themoviedb.org/settings/api)
+Everything the old app could do, it still does: the TMDb-powered index, include/exclude
+genre filtering, multi-language include/exclude, the era slider, binge-liability maths,
+Stremio deep links and the local watchlist. What is new is how it reads.
+
+![Legacy screenshot — the previous "Noir" build](homepage.jpg)
+
+*The screenshot above is the previous build. It is kept for history, not as a picture of
+Cabinet.*
 
 ---
 
-## 🛠️ Tech Stack
-*   **Framework:** React 18 + Vite
-*   **Styling:** Tailwind CSS (Custom "Noir" Config)
-*   **Icons:** Lucide React
-*   **Data:** TMDB API V3
-*   **Deployment:** Vercel
+## The departments
 
-## 💻 Running Locally
-If you want to run this code on your own machine:
+The page is one continuous issue, numbered in roman:
 
-1.  **Clone the repo**
-    ```bash
-    git clone https://github.com/Sisyphus93/cultivated-tv.git
-    cd cultivated-tv
-    ```
+| | Department | What it is |
+|---|---|---|
+| **I** | **In Rotation** | Your shelf, as notebook entries, with the backlog costed in hours. |
+| **II** | **The Index** | The full filtered index, readable as *leaflets* or *notebook entries*. |
+| **III** | **Editor's Desk** | The standing essay. Written, not generated. |
+| **IV** | **Late Night, Loud Volume** | Four mood collections. Each one writes real filter state. |
+| **V** | **Colophon** | How the seals are derived, what the types are, where the data comes from. |
 
-2.  **Install dependencies**
-    ```bash
-    npm install
-    ```
+**The Clock** — a cinema-ticket stub in the corner of the page — appears once something is
+shelved. It carries the title, the season and episode you are on, and the time remaining.
+There is no player here, so episodes are marked off by hand and kept in local storage.
 
-3.  **Start the server**
-    ```bash
-    npm run dev
-    ```
+---
 
-## 🤝 Feedback
-This project was "vibe coded" as a personal tool, but I'm open to feedback from the Stremio community!
-Feel free to open an Issue if you find a bug or have a feature request for v1.3.
+## Design system
+
+**Palette.** Aged paper and ink, low-chroma, no blue.
+
+| Token | Hex | Use |
+|---|---|---|
+| `--ink` | `#1A1612` | Deep walnut. All primary type. |
+| `--paper` | `#F2EBDD` | Aged cream. The page. |
+| `--paper-2` | `#E8DFC9` | Layered surfaces, filter desk, ticket. |
+| `--cloth` | `#C9B79C` | Linen cover tone. |
+| `--rust` | `#B5482A` | Oxide red — the single accent of warmth. |
+| `--rust-deep` | `#9C3A20` | Oxide red at caption sizes, where `--rust` would fail AA. |
+| `--moss` | `#4A5240` | Aged green, secondary accent. |
+| `--gold` / `--gold-deep` | `#B8893E` / `#8A6428` | Seals and ornament; the deeper value for lettering. |
+| `--rule` | `#2A221B` | Hairline rules. |
+
+**Type.** `Fraunces` (display, with its `SOFT` and `WONK` axes carrying the hand-drawn
+wobble), `Inter` (running text), `JetBrains Mono` (marginalia, ledger figures, catalogue
+numbers). Headlines are set tight at −0.02em; small caps labels at +0.18em.
+
+**Texture.** Procedural SVG grain at 0.04 opacity, ink rules with a half-pixel bleed,
+hand-drawn underlines drawn in CSS, drop caps, seals tilted −4°, and slightly crooked
+frames — no photographic texture assets anywhere.
+
+**Motion.** One curve for the whole journal: `cubic-bezier(0.2, 0.7, 0.1, 1)`. The hero
+fades over 300ms and rises 12px across 600ms. Card hovers warm the sepia plate by five
+percent, lift the caption 2px and draw the underline. `prefers-reduced-motion` turns all
+of it off.
+
+**Accessibility.** Every string clears WCAG AA against the paper it sits on — measured, not
+assumed. Focus is a 2px ink outline at 2px offset and is never removed. Decorative SVG and
+ornament are `aria-hidden`. There are no star ratings, no rating bars and no match
+percentages; TMDb's vote average is printed small and grey, the way an archivist prints an
+accession number.
+
+---
+
+## The seals
+
+The stamps are derived, never invented. Each one restates data TMDb already returned:
+
+| Seal | Derived from |
+|---|---|
+| **New season** | `Returning Series`, last aired within 14 months |
+| **Season finale** | `Ended`, last aired within 12 months |
+| **Masterpiece** | rated ≥ 8.2 on ≥ 500 votes |
+| **Overlooked** | rated ≥ 7.4 on < 250 votes |
+| **New** | first aired this year |
+| **Complete** | `Ended` |
+| **Short form** | ≤ 6 hours, start to finish |
+
+---
+
+## Privacy & BYOK
+
+Client-side only. Your TMDb key is stored in your browser and sent to TMDb alone — never
+to a server of ours. Your shelf and episode marks live in `localStorage`.
+
+[Get a free TMDb API key](https://www.themoviedb.org/settings/api), or read a sample issue
+on the shared demo key.
+
+---
+
+## Running it
+
+```bash
+npm install
+npm run dev      # dev server on 0.0.0.0:5173
+npm run build    # tsc + vite build
+npm test         # vitest run
+```
+
+## Tests
+
+`npm test` mounts the real `App` against a mocked archive and exercises the actual request
+path — `discoverShows`, the detail fetch, the seal derivation, the shelf, the clock's
+episode maths, the genre three-state cycle, the collection presets and the landmark
+structure. No component logic is duplicated in the tests.
+
+## Stack
+
+React 18 · Vite · Tailwind (extended with the Cabinet tokens) · TypeScript · TMDb v3 ·
+Vitest + Testing Library.
+
+---
+
+## What we are not
+
+- Not Netflix, Disney+ or Mubi in look or feel.
+- No purple, no indigo, no AI-gradient backgrounds.
+- No glass morphism, no neumorphism, no pill-shaped buttons.
+- Not everything is centred.
+- Nothing animates for the sake of animating.
+- No emoji as UI icons — a handful appear as editorial marginalia, and that is all.
+- No fake user reviews, no rating bars, no "98% match".

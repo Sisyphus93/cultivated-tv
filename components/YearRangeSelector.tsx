@@ -16,67 +16,59 @@ export const YearRangeSelector: React.FC<YearRangeSelectorProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
-  
-  // Local state for smooth dragging before commit
+
+  // Local state so dragging feels immediate; we only commit on release.
   const [localRange, setLocalRange] = useState<[number, number]>(selectedRange);
   const [isDragging, setIsDragging] = useState<'min' | 'max' | null>(null);
 
-  // Keep a ref of the latest range to access in event listeners without re-binding them
   const rangeRef = useRef(localRange);
   useEffect(() => {
     rangeRef.current = localRange;
   }, [localRange]);
 
-  // Sync props to local state when not dragging
   useEffect(() => {
-    if (!isDragging) {
-      setLocalRange(selectedRange);
-    }
+    if (!isDragging) setLocalRange(selectedRange);
   }, [selectedRange, isDragging]);
 
-  // Click Outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsOpen(false);
+    };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', onKey);
+    };
   }, []);
 
-  // Drag Start (Mouse & Touch)
   const handleDragStart = (type: 'min' | 'max') => (e: React.MouseEvent | React.TouchEvent) => {
     e.stopPropagation();
-    // Prevent default only on touch to stop potential emulated mouse events or scrolling issues initially
-    if ('touches' in e) {
-        // Optional: e.preventDefault(); 
-    }
     setIsDragging(type);
   };
 
-  // Unified Move Logic
-  const updatePosition = useCallback((clientX: number) => {
-    if (!isDragging || !trackRef.current) return;
+  const updatePosition = useCallback(
+    (clientX: number) => {
+      if (!isDragging || !trackRef.current) return;
 
-    const rect = trackRef.current.getBoundingClientRect();
-    const percent = Math.min(Math.max((clientX - rect.left) / rect.width, 0), 1);
-    const totalYears = maxYear - minYear;
-    const yearValue = Math.round(minYear + (percent * totalYears));
+      const rect = trackRef.current.getBoundingClientRect();
+      const percent = Math.min(Math.max((clientX - rect.left) / rect.width, 0), 1);
+      const yearValue = Math.round(minYear + percent * (maxYear - minYear));
 
-    setLocalRange(prev => {
-      const [currMin, currMax] = prev;
-      if (isDragging === 'min') {
-        const newMin = Math.min(yearValue, currMax); // Clamp to max
-        return [newMin, currMax];
-      } else {
-        const newMax = Math.max(yearValue, currMin); // Clamp to min
-        return [currMin, newMax];
-      }
-    });
-  }, [isDragging, minYear, maxYear]);
+      setLocalRange(prev => {
+        const [currMin, currMax] = prev;
+        if (isDragging === 'min') return [Math.min(yearValue, currMax), currMax];
+        return [currMin, Math.max(yearValue, currMin)];
+      });
+    },
+    [isDragging, minYear, maxYear],
+  );
 
-  // Global Listeners for Move/End
   useEffect(() => {
     if (!isDragging) return;
 
@@ -84,18 +76,15 @@ export const YearRangeSelector: React.FC<YearRangeSelectorProps> = ({
       e.preventDefault();
       updatePosition(e.clientX);
     };
-
     const onTouchMove = (e: TouchEvent) => {
-      e.preventDefault(); // Prevent scrolling while dragging
+      e.preventDefault();
       updatePosition(e.touches[0].clientX);
     };
-
     const onEnd = () => {
       setIsDragging(null);
-      onChange(rangeRef.current); // Commit change using the ref
+      onChange(rangeRef.current);
     };
 
-    // Add listeners (passive: false is important for touchmove to allow preventDefault)
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onEnd);
     window.addEventListener('touchmove', onTouchMove, { passive: false });
@@ -109,69 +98,93 @@ export const YearRangeSelector: React.FC<YearRangeSelectorProps> = ({
     };
   }, [isDragging, updatePosition, onChange]);
 
-  // Calculate percentages for UI
-  const getPercent = (value: number) => {
-    return ((value - minYear) / (maxYear - minYear)) * 100;
-  };
-
+  const getPercent = (value: number) => ((value - minYear) / (maxYear - minYear)) * 100;
   const minPercent = getPercent(localRange[0]);
   const maxPercent = getPercent(localRange[1]);
+
+  // Keyboard access: the thumbs are real buttons, so the slider works without a mouse.
+  const nudge = (type: 'min' | 'max', delta: number) => {
+    setLocalRange(prev => {
+      const [currMin, currMax] = prev;
+      const next =
+        type === 'min'
+          ? [Math.min(Math.max(currMin + delta, minYear), currMax), currMax]
+          : [currMin, Math.max(Math.min(currMax + delta, maxYear), currMin)];
+      const tuple: [number, number] = [next[0], next[1]];
+      onChange(tuple);
+      return tuple;
+    });
+  };
 
   return (
     <div className="relative" ref={wrapperRef}>
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 group cursor-pointer"
+        aria-expanded={isOpen}
+        className="label-caps flex items-baseline gap-1.5 border-b border-ink/20 pb-0.5 text-ink/72 transition-colors duration-[180ms] ease-cabinet hover:border-ink/60 hover:text-ink"
       >
-        <span className="w-2 h-2 bg-cyan-400 rounded-full"></span>
-        <span className="text-[10px] font-mono uppercase tracking-widest border-b border-transparent group-hover:border-gray-500 transition-colors pb-0.5">
-            <span className={`${isOpen ? 'text-gray-500' : 'text-gray-500 group-hover:text-gray-400'} transition-colors`}>Year: </span>
-            <span className="text-white font-bold">{localRange[0]}</span>
-            <span className="text-gray-600 mx-1">-</span>
-            <span className="text-white font-bold">{localRange[1]}</span>
-        </span>
+        <span className="text-ink/62">Years:</span>
+        <span className="font-bold text-ink">{localRange[0]}</span>
+        <span className="text-ink/62">—</span>
+        <span className="font-bold text-ink">{localRange[1]}</span>
       </button>
 
-      {isOpen && (
-        <div className="absolute top-full left-0 mt-4 w-72 bg-[#111] border border-gray-800 shadow-2xl z-50 animate-fade-in p-6 rounded-sm">
-          <div className="flex justify-between text-xs text-gray-500 font-mono mb-4">
-             <span>{minYear}</span>
-             <span className="text-cyan-400 font-bold">{localRange[0]} - {localRange[1]}</span>
-             <span>{maxYear}</span>
+      {isOpen ? (
+        <div className="panel animate-fade-in absolute left-0 top-full z-[100] mt-2 w-72 origin-top-left p-6">
+          <div className="label-caps mb-5 flex justify-between text-ink/62">
+            <span>{minYear}</span>
+            <span className="font-bold text-rustdeep">
+              {localRange[0]} — {localRange[1]}
+            </span>
+            <span>{maxYear}</span>
           </div>
 
-          <div className="relative h-6 flex items-center select-none touch-none" ref={trackRef}>
-            {/* Track Background */}
-            <div className="absolute left-0 right-0 h-1 bg-gray-800 rounded-full" />
-            
-            {/* Active Range */}
-            <div 
-                className="absolute h-1 bg-white"
-                style={{ left: `${minPercent}%`, width: `${maxPercent - minPercent}%` }}
+          <div className="relative flex h-6 touch-none select-none items-center" ref={trackRef}>
+            <span aria-hidden="true" className="absolute inset-x-0 h-px bg-ink/30" />
+            <span
+              aria-hidden="true"
+              className="absolute h-[3px] bg-rust"
+              style={{ left: `${minPercent}%`, width: `${maxPercent - minPercent}%` }}
             />
 
-            {/* Min Thumb */}
-            <div
-                onMouseDown={handleDragStart('min')}
-                onTouchStart={handleDragStart('min')}
-                className="absolute w-3 h-3 bg-cyan-400 rounded-full shadow cursor-grab active:cursor-grabbing hover:scale-125 transition-transform"
-                style={{ left: `${minPercent}%`, marginLeft: '-6px' }} 
+            <button
+              type="button"
+              aria-label={`First year, currently ${localRange[0]}`}
+              aria-valuenow={localRange[0]}
+              onMouseDown={handleDragStart('min')}
+              onTouchStart={handleDragStart('min')}
+              onKeyDown={e => {
+                if (e.key === 'ArrowLeft') nudge('min', -1);
+                if (e.key === 'ArrowRight') nudge('min', 1);
+                if (e.key === 'PageUp') nudge('min', 10);
+                if (e.key === 'PageDown') nudge('min', -10);
+              }}
+              className="absolute h-4 w-4 cursor-grab touch-none rounded-full border border-ink bg-paper transition-transform duration-[180ms] ease-cabinet hover:scale-110 active:cursor-grabbing"
+              style={{ left: `${minPercent}%`, marginLeft: '-8px' }}
             />
-
-            {/* Max Thumb */}
-            <div
-                onMouseDown={handleDragStart('max')}
-                onTouchStart={handleDragStart('max')}
-                className="absolute w-3 h-3 bg-cyan-400 rounded-full shadow cursor-grab active:cursor-grabbing hover:scale-125 transition-transform"
-                style={{ left: `${maxPercent}%`, marginLeft: '-6px' }} 
+            <button
+              type="button"
+              aria-label={`Last year, currently ${localRange[1]}`}
+              aria-valuenow={localRange[1]}
+              onMouseDown={handleDragStart('max')}
+              onTouchStart={handleDragStart('max')}
+              onKeyDown={e => {
+                if (e.key === 'ArrowLeft') nudge('max', -1);
+                if (e.key === 'ArrowRight') nudge('max', 1);
+                if (e.key === 'PageUp') nudge('max', 10);
+                if (e.key === 'PageDown') nudge('max', -10);
+              }}
+              className="absolute h-4 w-4 cursor-grab touch-none rounded-full border border-ink bg-paper transition-transform duration-[180ms] ease-cabinet hover:scale-110 active:cursor-grabbing"
+              style={{ left: `${maxPercent}%`, marginLeft: '-8px' }}
             />
           </div>
 
-          <div className="mt-4 text-[10px] text-gray-600 font-mono text-center">
-             Drag handles to filter era
-          </div>
+          <p className="label-caps mt-4 text-center text-ink/62">
+            Drag the handles, or use the arrow keys
+          </p>
         </div>
-      )}
+      ) : null}
     </div>
   );
 };

@@ -1,102 +1,103 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { ArrowLeft, ArrowRight, Loader2, Info, X, MinusCircle, PlusCircle, UserMinus, Search, Layers, GitMerge, Bookmark, LayoutGrid, Clock, RotateCcw } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeft, ArrowRight, Bookmark, Info, Loader2, Search, X } from 'lucide-react';
 import { ApiKeyInput } from './components/ApiKeyInput';
 import { ShowCard } from './components/ShowCard';
 import { LanguageSelector } from './components/LanguageSelector';
 import { SortSelector } from './components/SortSelector';
 import { YearRangeSelector } from './components/YearRangeSelector';
+import { Hero } from './components/Hero';
+import { Grain } from './components/Grain';
+import { Clock } from './components/Clock';
+import { IndexNav, type SectionId } from './components/IndexNav';
+import { EditorDesk } from './components/EditorDesk';
+import { Collections, type CollectionPreset } from './components/Collections';
+import { Divider, Marginalia } from './components/Marginalia';
 import { discoverShows, searchShows } from './services/tmdbService';
 import { TVShow } from './types';
 import { FILTER_CONFIG, POPULAR_GENRES, WATCHLIST_SORT_OPTIONS, DEMO_API_KEY } from './constants';
 import { useWatchlist } from './hooks/useWatchlist';
+import { useProgress } from './hooks/useProgress';
+import { dateline, formatHours, issueNumber, toRoman } from './utils/editorial';
 
-type ViewMode = 'discover' | 'watchlist';
+const CURRENT_YEAR = new Date().getFullYear();
+const MAX_YEAR_LIMIT = CURRENT_YEAR + 5; // Look ahead for announced shows
+const MIN_YEAR_LIMIT = 1900;
 
 const App: React.FC = () => {
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [isDemoMode, setIsDemoMode] = useState(false);
-  
-  // View State
-  const [viewMode, setViewMode] = useState<ViewMode>('discover');
 
-  // Discover State
+  // Archive
   const [shows, setShows] = useState<TVShow[]>([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalPages, setTotalPages] = useState(0);
-  
-  // Watchlist State Hook
-  const { watchlist } = useWatchlist();
-  
-  // Search State
+
+  const { watchlist, addToWatchlist, removeFromWatchlist, isInWatchlist } = useWatchlist();
+  const { watchedFor, logEpisode } = useProgress();
+
+  // Search
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
 
-  // 3-State Logic: Included vs Excluded
+  // Filters — 3-state genres (include → exclude → off)
   const [includedGenres, setIncludedGenres] = useState<number[]>([]);
   const [excludedGenres, setExcludedGenres] = useState<number[]>([]);
-  
-  // Genre Logic Mode: OR (Any) vs AND (All)
   const [genreMode, setGenreMode] = useState<'OR' | 'AND'>('OR');
 
-  // Person Filter State
-  const [selectedPerson, setSelectedPerson] = useState<{id: number, name: string} | null>(null);
-
-  // Filter States - Use strings to allow empty input (clearing the field)
   const [minVotes, setMinVotes] = useState<string>(String(FILTER_CONFIG.MIN_VOTES));
   const [minRating, setMinRating] = useState<string>(String(FILTER_CONFIG.MIN_RATING));
-  // Language Filters - Multi-select with include/exclude (3-state cycle per language)
-  const [includedLanguages, setIncludedLanguages] = useState<string[]>(['en']); // Default to English as per request
+  const [includedLanguages, setIncludedLanguages] = useState<string[]>(['en']);
   const [excludedLanguages, setExcludedLanguages] = useState<string[]>([]);
-  
-  // Year Range State
-  const CURRENT_YEAR = new Date().getFullYear();
-  const MAX_YEAR_LIMIT = CURRENT_YEAR + 5; // Allow looking ahead 5 years for announced shows
-  const MIN_YEAR_LIMIT = 1900;
   const [yearRange, setYearRange] = useState<[number, number]>([MIN_YEAR_LIMIT, MAX_YEAR_LIMIT]);
 
-  // Sort State - Default to Newest
   const [sortBy, setSortBy] = useState<string>('first_air_date.desc');
   const [watchlistSortBy, setWatchlistSortBy] = useState<string>('addedAt.desc');
-  
-  // Debounced values for API calls (parsed as numbers)
-  const [debouncedFilters, setDebouncedFilters] = useState({ 
-    minVotes: FILTER_CONFIG.MIN_VOTES, 
+
+  // Presentation
+  const [cardVariant, setCardVariant] = useState<'leaflet' | 'notebook'>('leaflet');
+  const [activeSection, setActiveSection] = useState<SectionId>('index');
+  const [activeCollection, setActiveCollection] = useState<string | null>(null);
+
+  const [debouncedFilters, setDebouncedFilters] = useState({
+    minVotes: FILTER_CONFIG.MIN_VOTES,
     minRating: FILTER_CONFIG.MIN_RATING,
     minYear: MIN_YEAR_LIMIT,
-    maxYear: MAX_YEAR_LIMIT
+    maxYear: MAX_YEAR_LIMIT,
   });
 
-  // Debounce logic for Search Input
+  const issue = useMemo(() => issueNumber(), []);
+
+  /* ---------------- debounce ------------------------------------------------ */
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
-      if (viewMode === 'discover') setPage(1); // Reset to page 1 when query changes in discover
+      setPage(1);
     }, 500);
     return () => clearTimeout(timer);
-  }, [searchQuery, viewMode]);
+  }, [searchQuery]);
 
-  // Debounce logic for Numeric Filters & Year Range
   useEffect(() => {
     const timer = setTimeout(() => {
       const votes = minVotes === '' ? 0 : Number(minVotes);
       const rating = minRating === '' ? 0 : Number(minRating);
 
-      setDebouncedFilters({ 
-        minVotes: isNaN(votes) ? 0 : votes, 
+      setDebouncedFilters({
+        minVotes: isNaN(votes) ? 0 : votes,
         minRating: isNaN(rating) ? 0 : rating,
         minYear: yearRange[0],
-        maxYear: yearRange[1]
+        maxYear: yearRange[1],
       });
-      // Reset to page 1 when filters change
-      if (viewMode === 'discover') setPage(1);
+      setPage(1);
     }, 600);
     return () => clearTimeout(timer);
-  }, [minVotes, minRating, yearRange, viewMode]);
+  }, [minVotes, minRating, yearRange]);
 
-  // Check local storage for key on mount AND migrate from sessionStorage if needed
+  /* ---------------- key handling -------------------------------------------- */
+
   useEffect(() => {
     const localKey = localStorage.getItem('tmdb_api_key');
     const sessionKey = sessionStorage.getItem('tmdb_api_key');
@@ -105,7 +106,6 @@ const App: React.FC = () => {
       setApiKey(localKey);
       setIsDemoMode(false);
     } else if (sessionKey) {
-      // Migrate legacy key to new storage
       localStorage.setItem('tmdb_api_key', sessionKey);
       setApiKey(sessionKey);
       setIsDemoMode(false);
@@ -131,86 +131,74 @@ const App: React.FC = () => {
     setIsDemoMode(false);
   };
 
-  const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    // Intercept standard left-click to do soft reset (SPA behavior)
-    // Allow Middle-Click / Ctrl-Click to pass through for new tab (Default browser behavior)
-    if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
-      e.preventDefault();
-      setViewMode('discover');
-      setSearchQuery('');
-      setPage(1);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  };
+  /* ---------------- fetching ------------------------------------------------- */
 
-  // --- DISCOVER API LOGIC ---
   const loadData = useCallback(async () => {
-    if (!apiKey || viewMode === 'watchlist') return;
+    if (!apiKey) return;
 
     setLoading(true);
     setError(null);
     try {
-      let data;
-      
-      if (debouncedSearchQuery) {
-        // GLOBAL SEARCH MODE: Ignore all filters, search by text
-        data = await searchShows(apiKey, debouncedSearchQuery, page);
-      } else {
-        // DISCOVERY MODE: Use standard filters
-        data = await discoverShows(apiKey, page, {
-          withGenres: includedGenres,
-          withoutGenres: excludedGenres,
-          withOriginalLanguage: includedLanguages.length > 0 ? includedLanguages : undefined,
-          withoutOriginalLanguage: excludedLanguages,
-          withPeople: selectedPerson ? String(selectedPerson.id) : undefined,
-          minVotes: debouncedFilters.minVotes,
-          minRating: debouncedFilters.minRating,
-          minYear: debouncedFilters.minYear,
-          maxYear: debouncedFilters.maxYear,
-          genreMode: genreMode,
-          sortBy: sortBy
-        });
-      }
+      const data = debouncedSearchQuery
+        ? await searchShows(apiKey, debouncedSearchQuery, page)
+        : await discoverShows(apiKey, page, {
+            withGenres: includedGenres,
+            withoutGenres: excludedGenres,
+            withOriginalLanguage: includedLanguages.length > 0 ? includedLanguages : undefined,
+            withoutOriginalLanguage: excludedLanguages,
+            minVotes: debouncedFilters.minVotes,
+            minRating: debouncedFilters.minRating,
+            minYear: debouncedFilters.minYear,
+            maxYear: debouncedFilters.maxYear,
+            genreMode: genreMode,
+            sortBy: sortBy,
+          });
 
       setShows(data.results);
       setTotalPages(data.total_pages);
-      // Scroll to top smoothly
-      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: any) {
-      if (err.message === "Invalid API Key") {
-         setApiKey(null); // Reset to input screen
-         localStorage.removeItem('tmdb_api_key'); // Clear invalid key
-         setError("Invalid API Key provided. Please try again.");
+      if (err.message === 'Invalid API Key') {
+        setApiKey(null);
+        localStorage.removeItem('tmdb_api_key');
+        setError('That key was not accepted. Enter another to continue.');
       } else {
-        setError("Failed to fetch shows. Please try again later.");
+        setError('The archive did not answer. Try again in a moment.');
       }
     } finally {
       setLoading(false);
     }
-  }, [apiKey, page, includedGenres, excludedGenres, debouncedFilters, includedLanguages, excludedLanguages, selectedPerson, debouncedSearchQuery, genreMode, sortBy, viewMode]);
+  }, [
+    apiKey,
+    page,
+    includedGenres,
+    excludedGenres,
+    debouncedFilters,
+    includedLanguages,
+    excludedLanguages,
+    debouncedSearchQuery,
+    genreMode,
+    sortBy,
+  ]);
 
-  // Trigger fetch when dependencies change in Discover mode
   useEffect(() => {
-    if (apiKey && viewMode === 'discover') {
-      loadData();
-    }
-  }, [loadData, apiKey, viewMode]);
+    if (apiKey) loadData();
+  }, [loadData, apiKey]);
 
-  // --- WATCHLIST LOGIC ---
+  /* ---------------- watchlist ------------------------------------------------ */
+
   const sortedWatchlist = useMemo(() => {
     let list = [...watchlist];
 
-    // Filter by search query if present
     if (debouncedSearchQuery) {
       const q = debouncedSearchQuery.toLowerCase();
       list = list.filter(item => item.name.toLowerCase().includes(q));
     }
 
-    // Sort Logic
     const [field, direction] = watchlistSortBy.split('.');
-    
+
     list.sort((a, b) => {
-      let valA: any, valB: any;
+      let valA: any;
+      let valB: any;
 
       if (field === 'addedAt') {
         valA = a.addedAt || 0;
@@ -230,13 +218,12 @@ const App: React.FC = () => {
       } else if (field === 'popularity') {
         valA = a.popularity;
         valB = b.popularity;
+      } else {
+        return 0;
       }
 
-      if (direction === 'asc') {
-        return valA > valB ? 1 : -1;
-      } else {
-        return valA < valB ? 1 : -1;
-      }
+      if (direction === 'asc') return valA > valB ? 1 : -1;
+      return valA < valB ? 1 : -1;
     });
 
     return list;
@@ -248,525 +235,746 @@ const App: React.FC = () => {
     return { totalShows, totalBingeHours };
   }, [watchlist]);
 
-  // --- HANDLERS ---
+  /* ---------------- filter handlers ------------------------------------------ */
+
   const handleGenreToggle = (id: number) => {
     if (includedGenres.includes(id)) {
-        setIncludedGenres(prev => prev.filter(g => g !== id));
-        setExcludedGenres(prev => [...prev, id]);
+      setIncludedGenres(prev => prev.filter(g => g !== id));
+      setExcludedGenres(prev => [...prev, id]);
     } else if (excludedGenres.includes(id)) {
-        setExcludedGenres(prev => prev.filter(g => g !== id));
+      setExcludedGenres(prev => prev.filter(g => g !== id));
     } else {
-        setIncludedGenres(prev => [...prev, id]);
+      setIncludedGenres(prev => [...prev, id]);
     }
+    setActiveCollection(null);
     setPage(1);
   };
 
   const clearGenres = () => {
     setIncludedGenres([]);
     setExcludedGenres([]);
-    setSelectedPerson(null);
+    setActiveCollection(null);
     setPage(1);
   };
 
-  // --- LANGUAGE LOGIC (3-state cycle: include -> exclude -> off) ---
   const handleLanguageToggle = (code: string) => {
     if (includedLanguages.includes(code)) {
-      // Include -> Exclude
       setIncludedLanguages(includedLanguages.filter(c => c !== code));
       setExcludedLanguages([...excludedLanguages, code]);
     } else if (excludedLanguages.includes(code)) {
-      // Exclude -> Off
       setExcludedLanguages(excludedLanguages.filter(c => c !== code));
     } else {
-      // Off -> Include
       setIncludedLanguages([...includedLanguages, code]);
     }
-    setPage(1);
-  };
-
-  const clearLanguages = () => {
-    setIncludedLanguages([]);
-    setExcludedLanguages([]);
+    setActiveCollection(null);
     setPage(1);
   };
 
   const toggleGenreMode = () => {
-      setGenreMode(prev => prev === 'OR' ? 'AND' : 'OR');
-      setPage(1);
+    setGenreMode(prev => (prev === 'OR' ? 'AND' : 'OR'));
+    setActiveCollection(null);
+    setPage(1);
   };
 
-  // --- NUMERIC FILTERS RESET ---
   const isNumericFilterActive = useMemo(() => {
     const currentRating = Number(minRating);
     const currentVotes = Number(minVotes);
     const isYearDefault = yearRange[0] === MIN_YEAR_LIMIT && yearRange[1] === MAX_YEAR_LIMIT;
-    
-    return currentRating !== FILTER_CONFIG.MIN_RATING || 
-           currentVotes !== FILTER_CONFIG.MIN_VOTES || 
-           !isYearDefault;
-  }, [minRating, minVotes, yearRange, MIN_YEAR_LIMIT, MAX_YEAR_LIMIT]);
+
+    return (
+      currentRating !== FILTER_CONFIG.MIN_RATING ||
+      currentVotes !== FILTER_CONFIG.MIN_VOTES ||
+      !isYearDefault
+    );
+  }, [minRating, minVotes, yearRange]);
 
   const resetNumericFilters = () => {
     setMinRating(String(FILTER_CONFIG.MIN_RATING));
     setMinVotes(String(FILTER_CONFIG.MIN_VOTES));
     setYearRange([MIN_YEAR_LIMIT, MAX_YEAR_LIMIT]);
+    setActiveCollection(null);
     setPage(1);
   };
+
+  const applyCollection = (preset: CollectionPreset) => {
+    setIncludedGenres(preset.includedGenres);
+    setExcludedGenres([]);
+    setGenreMode(preset.genreMode);
+    setIncludedLanguages(preset.includedLanguages);
+    setExcludedLanguages([]);
+    setSortBy(preset.sortBy);
+    setMinRating(String(preset.minRating));
+    setActiveCollection(preset.id);
+    setPage(1);
+    window.requestAnimationFrame(() => {
+      document.getElementById('index')?.scrollIntoView({ block: 'start' });
+    });
+  };
+
+  /* ---------------- section tracking ----------------------------------------- */
+
+  useEffect(() => {
+    const nodes = Array.from(document.querySelectorAll<HTMLElement>('[data-section]'));
+    if (nodes.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      entries => {
+        const visible = entries
+          .filter(e => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible) setActiveSection(visible.target.getAttribute('data-section') as SectionId);
+      },
+      { rootMargin: '-25% 0px -55% 0px', threshold: [0.01, 0.1, 0.3] },
+    );
+
+    nodes.forEach(node => observer.observe(node));
+    return () => observer.disconnect();
+  }, []);
+
+  const goToSection = (id: SectionId) => {
+    document.getElementById(id)?.scrollIntoView({ block: 'start' });
+  };
+
+  /* ---------------- derived bits --------------------------------------------- */
+
+  const leadShow = shows.length > 0 ? shows[0] : null;
+  const currentShow = watchlist.length > 0 ? watchlist[0] : null;
+
+  const filterSummary = useMemo(() => {
+    const includedNames = includedGenres.map(id => POPULAR_GENRES.find(g => g.id === id)?.name).filter(Boolean);
+    const excludedNames = excludedGenres.map(id => POPULAR_GENRES.find(g => g.id === id)?.name).filter(Boolean);
+    return { includedNames: includedNames as string[], excludedNames: excludedNames as string[] };
+  }, [includedGenres, excludedGenres]);
+
+  const hasAnyFilter =
+    filterSummary.includedNames.length > 0 ||
+    filterSummary.excludedNames.length > 0 ||
+    isNumericFilterActive ||
+    includedLanguages.length > 0 ||
+    excludedLanguages.length > 0;
+
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  /* ---------------- the reader's pass ---------------------------------------- */
 
   if (!apiKey) {
     return <ApiKeyInput onSetKey={handleSetKey} onEnterDemo={handleEnterDemo} error={error} />;
   }
 
-  const renderGenreSummary = () => {
-    if (debouncedSearchQuery) return null;
-
-    const hasIncluded = includedGenres.length > 0;
-    const hasExcluded = excludedGenres.length > 0;
-    const hasPerson = !!selectedPerson;
-
-    if (!hasIncluded && !hasExcluded && !hasPerson) return <span className="text-gray-300">All</span>;
-
-    const parts = [];
-
-    if (hasPerson) {
-      parts.push(<span key="person" className="text-purple-400 font-bold whitespace-nowrap">Starring {selectedPerson.name}</span>);
-    }
-
-    const includedNames = POPULAR_GENRES
-        .filter(g => includedGenres.includes(g.id))
-        .map(g => g.name)
-        .filter((value, index, self) => self.indexOf(value) === index);
-    
-    if (includedNames.length > 0) {
-       const joinText = genreMode === 'AND' ? ' + ' : ' / ';
-       parts.push(
-          <span key="inc" className="text-gray-300 whitespace-nowrap">
-             {includedNames.join(joinText)}
-             {includedNames.length > 1 && (
-                 <span className="text-[9px] text-gray-500 ml-1 border border-gray-700 px-1 rounded align-middle">
-                     {genreMode === 'AND' ? 'ALL' : 'ANY'}
-                 </span>
-             )}
-          </span>
-       );
-    }
-
-    const excludedNames = POPULAR_GENRES
-        .filter(g => excludedGenres.includes(g.id))
-        .map(g => g.name)
-        .filter((value, index, self) => self.indexOf(value) === index);
-    
-    if (excludedNames.length > 0) {
-       parts.push(<span key="exc" className="text-red-400 line-through decoration-red-900 decoration-2 whitespace-nowrap">{excludedNames.join(', ')}</span>);
-    }
-
-    return (
-        <div className="flex items-center gap-x-2 overflow-hidden">
-            {parts.map((part, i) => (
-              <React.Fragment key={i}>
-                {i > 0 && <span className="text-gray-600 flex-shrink-0">|</span>}
-                {part}
-              </React.Fragment>
-            ))}
-        </div>
-    );
-  };
+  const pageLabel = String(page).padStart(3, '0');
 
   return (
-    <div className="min-h-screen bg-[#050505] text-gray-100 p-6 md:p-12 font-sans selection:bg-white selection:text-black">
-      
-      {/* Header */}
-      <header className="max-w-5xl mx-auto mb-8 border-b border-gray-900 pb-8 relative z-50">
-         <div className="absolute top-0 right-0 z-10 flex gap-4 items-center">
-             {isDemoMode ? (
-               <span className="px-2 py-1 bg-yellow-900/20 border border-yellow-700 text-yellow-500 text-[10px] font-bold tracking-widest uppercase rounded-sm animate-fade-in">
-                 Demo Mode
-               </span>
-             ) : (
-               <span className="px-2 py-1 bg-green-900/20 border border-green-700 text-green-500 text-[10px] font-bold tracking-widest uppercase rounded-sm animate-fade-in">
-                 Pro Mode
-               </span>
-             )}
-             
-             <button 
-                onClick={handleResetKey}
-                className="text-xs text-gray-500 hover:text-white uppercase font-mono tracking-widest transition-colors"
-             >
-                Reset Key
-             </button>
-         </div>
+    <div className="min-h-screen bg-paper text-ink antialiased shadow-[inset_1px_0_0_var(--ink-08),inset_-1px_0_0_var(--ink-08)]">
+      <Grain />
 
-        <div className="flex flex-col md:flex-row justify-between items-end gap-6 pt-6">
-          <div className="w-full md:w-auto">
-            <h1 className="text-4xl md:text-6xl font-thin tracking-[-0.08em] text-white mb-4">
-              <a 
-                href="/" 
-                onClick={handleLogoClick}
-                className="text-white hover:opacity-80 transition-opacity hover:no-underline cursor-pointer"
-              >
-                CULTIVATED<span className="font-black">TV</span>
-              </a>
-            </h1>
+      <Clock
+        show={currentShow}
+        apiKey={apiKey}
+        watched={currentShow ? watchedFor(currentShow.id) : 0}
+        onLog={logEpisode}
+        onUnshelve={removeFromWatchlist}
+      />
 
-            {/* VIEW MODE TOGGLE */}
-            <div className="flex items-center gap-4 mb-6">
-               <button 
-                 onClick={() => setViewMode('discover')}
-                 className={`flex items-center gap-2 text-xs font-mono uppercase tracking-widest transition-colors pb-1 border-b-2 ${viewMode === 'discover' ? 'text-white border-white' : 'text-gray-500 border-transparent hover:text-gray-400'}`}
-               >
-                 <LayoutGrid size={12} /> Discover
-               </button>
-               <span className="text-gray-800">|</span>
-               <button 
-                 onClick={() => setViewMode('watchlist')}
-                 className={`flex items-center gap-2 text-xs font-mono uppercase tracking-widest transition-colors pb-1 border-b-2 ${viewMode === 'watchlist' ? 'text-white border-white' : 'text-gray-500 border-transparent hover:text-gray-400'}`}
-               >
-                 <Bookmark size={12} /> My List <span className="text-gray-500">({watchlist.length})</span>
-               </button>
-            </div>
-            
-            {/* Filter Summary (Only visible in Discover Mode & No Search) */}
-            {viewMode === 'discover' && (
-              <div className={`flex flex-col gap-2 text-xs font-mono text-gray-500 tracking-widest uppercase transition-all duration-500 ${debouncedSearchQuery ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100 h-auto'}`}>
-                 <div className="flex items-center gap-2 max-w-xl overflow-hidden">
-                   <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></span>
-                   <div className="flex items-center gap-2 whitespace-nowrap overflow-hidden text-ellipsis w-full">
-                     <span className="flex-shrink-0">Filters:</span>
-                     {renderGenreSummary()}
-                   </div>
-                 </div>
-                 
-                 <div className="flex flex-wrap items-center gap-4 md:gap-6 mt-1">
-                   {/* Rating Input */}
-                   <div className="flex items-center gap-2">
-                     <span className="w-2 h-2 bg-yellow-600 rounded-full"></span>
-                     <label className="flex items-center gap-2 cursor-pointer group">
-                       <span className="text-gray-500 transition-colors group-hover:text-gray-400">Rating &ge;</span>
-                       <input 
-                         type="number"
-                         min="0"
-                         max="10"
-                         step="0.1"
-                         value={minRating}
-                         onChange={(e) => setMinRating(e.target.value)}
-                         className="bg-transparent border-b border-gray-800 text-white w-12 text-center focus:outline-none focus:border-yellow-600 transition-colors font-mono font-bold"
-                         placeholder="0"
-                       />
-                     </label>
-                   </div>
-
-                   {/* Votes Input */}
-                   <div className="flex items-center gap-2">
-                     <span className="w-2 h-2 bg-gray-600 rounded-full"></span>
-                     <label className="flex items-center gap-2 cursor-pointer group">
-                       <span className="text-gray-500 transition-colors group-hover:text-gray-400">Votes &ge;</span>
-                       <input 
-                         type="number"
-                         min="0"
-                         step="1"
-                         value={minVotes}
-                         onChange={(e) => setMinVotes(e.target.value)}
-                         className="bg-transparent border-b border-gray-800 text-white w-16 text-center focus:outline-none focus:border-gray-500 transition-colors font-mono font-bold"
-                         placeholder="0"
-                       />
-                     </label>
-                   </div>
-                   
-                   {/* Year Range Selector */}
-                   <YearRangeSelector
-                      minYear={MIN_YEAR_LIMIT}
-                      maxYear={MAX_YEAR_LIMIT}
-                      selectedRange={yearRange}
-                      onChange={setYearRange}
-                   />
-
-                   {/* Numeric Reset Button */}
-                   {isNumericFilterActive && (
-                     <button
-                        onClick={resetNumericFilters}
-                        className="flex items-center gap-1 text-[10px] font-mono uppercase tracking-widest text-red-500/70 hover:text-red-500 transition-colors animate-fade-in"
-                        title="Reset Rating, Votes & Year"
-                     >
-                        <RotateCcw size={10} /> RESET
-                     </button>
-                   )}
-                   
-                   {/* Discover Sort Selector */}
-                   <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
-                      <SortSelector 
-                          selectedSort={sortBy} 
-                          onSelect={(val) => { setSortBy(val); setPage(1); }} 
-                      />
-                   </div>
-
-                   {/* Language Selector */}
-                   <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 bg-purple-400 rounded-full"></span>
-                      <LanguageSelector
-                          includedLangs={includedLanguages}
-                          excludedLangs={excludedLanguages}
-                          onToggle={handleLanguageToggle}
-                          onClear={clearLanguages}
-                      />
-                   </div>
-                 </div>
-              </div>
-            )}
-
-            {/* WATCHLIST STATS HEADER */}
-            {viewMode === 'watchlist' && (
-               <div className="flex flex-wrap items-center gap-6 mt-2 animate-fade-in">
-                  <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-gray-400 border border-gray-800 px-3 py-2 rounded-sm">
-                     <Layers size={14} className="text-white" />
-                     <span>Total Shows: <span className="text-white font-bold">{watchlistStats.totalShows}</span></span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-gray-400 border border-gray-800 px-3 py-2 rounded-sm" title="Estimated time to finish current backlog">
-                     <Clock size={14} className="text-blue-400" />
-                     <span>Binge Liability: <span className="text-white font-bold">{watchlistStats.totalBingeHours} Hrs</span></span>
-                  </div>
-
-                  {/* Watchlist Sort Selector */}
-                  <div className="ml-auto flex items-center gap-2">
-                      <SortSelector 
-                          selectedSort={watchlistSortBy} 
-                          onSelect={(val) => setWatchlistSortBy(val)}
-                          options={WATCHLIST_SORT_OPTIONS}
-                      />
-                   </div>
-               </div>
-            )}
-
-            {/* Search Active Indicator */}
-            {debouncedSearchQuery && (
-              <div className="text-xs font-mono text-white tracking-widest uppercase animate-fade-in mt-2 flex items-center gap-2">
-                <Search size={12} className="text-yellow-500" />
-                {viewMode === 'discover' 
-                  ? <span>Searching Global Database: <span className="text-yellow-500">"{debouncedSearchQuery}"</span></span>
-                  : <span>Searching My List: <span className="text-yellow-500">"{debouncedSearchQuery}"</span></span>
-                }
-              </div>
-            )}
-          </div>
-
-          <div className="flex flex-col items-end gap-4 flex-shrink-0">
-             {/* Search Input & Toggle */}
-             <div className="flex items-center gap-4 h-8">
-                <div className={`flex items-center overflow-hidden transition-all duration-500 ease-in-out bg-black border-gray-800 ${isSearchOpen ? 'w-64 border-b opacity-100' : 'w-0 border-b-0 opacity-0'}`}>
-                    <input 
-                        type="text" 
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder={viewMode === 'discover' ? "Search global database..." : "Filter my list..."}
-                        className="bg-transparent text-white w-full px-2 py-1 font-mono text-xs focus:outline-none placeholder-gray-700"
-                        autoFocus={isSearchOpen}
-                    />
-                    {searchQuery && (
-                        <button onClick={() => setSearchQuery('')} className="text-gray-500 hover:text-white px-2">
-                            <X size={12} />
-                        </button>
-                    )}
-                </div>
-                
-                <button 
-                  onClick={() => setIsSearchOpen(!isSearchOpen)}
-                  className={`transition-colors duration-300 ${isSearchOpen || debouncedSearchQuery ? 'text-white' : 'text-gray-500 hover:text-white'}`}
-                  title="Toggle Search"
+      <div
+        className={`mx-auto max-w-shell px-[var(--margin)] pb-24 pt-10 ${currentShow ? 'lg:pr-[300px]' : ''}`}
+      >
+        {/* ================= MASTHEAD ================= */}
+        <header className="relative z-30">
+          <div className="flex flex-wrap items-start justify-between gap-x-10 gap-y-4">
+            <div>
+              <h1 className="font-display display-wonk text-[clamp(2.4rem,5vw,3.4rem)] font-light italic leading-none tracking-tighter2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setPage(1);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="hand-underline text-left"
+                  title="Back to the top of the issue"
                 >
-                  <Search size={20} strokeWidth={1.5} />
+                  Cabinet
                 </button>
-             </div>
-             
-             {viewMode === 'discover' && (
-                <div className="text-gray-500 font-mono text-xs text-right">
-                  PAGE {page} <span className="text-gray-800">/</span> {totalPages}
-                </div>
-             )}
-          </div>
-        </div>
-      </header>
+              </h1>
+              <Marginalia as="p" className="mt-2">
+                A TV series discovery journal · est. 2023
+              </Marginalia>
+            </div>
 
-      {/* Filter Section Container (Dimmed when Searching) - Only in Discover Mode */}
-      {viewMode === 'discover' && (
-        <div className={`transition-all duration-700 ease-in-out ${debouncedSearchQuery ? 'opacity-20 pointer-events-none grayscale blur-[1px]' : 'opacity-100'}`}>
-          
-          {/* Genre Filter Bar - Increased Bottom Spacing */}
-          <div className="max-w-5xl mx-auto mb-20 border-b border-gray-900 pb-6">
-            
-            {/* CONTROL ROW: Always visible to prevent layout shift */}
-            <div className="flex items-center gap-4 mb-4 min-h-[32px]">
-                 
-                 {/* Genre Logic Toggle - Always Visible (Anchor) */}
-                  <button
-                      onClick={toggleGenreMode}
-                      className="px-3 py-1.5 text-[10px] font-mono uppercase tracking-widest border border-blue-900 text-blue-400 hover:bg-blue-900/10 transition-all duration-300 flex items-center gap-1"
-                      title={genreMode === 'OR' ? 'Match Any Selected Genre' : 'Match All Selected Genres'}
-                  >
-                      {genreMode === 'OR' ? <Layers size={10} /> : <GitMerge size={10} />}
-                      MATCH: {genreMode === 'OR' ? 'ANY' : 'ALL'}
-                  </button>
+            <div className="flex flex-col items-start gap-3 sm:items-end">
+              <Marginalia>{dateline('Berlin')}</Marginalia>
 
-                {/* Clear Button - Conditional */}
-                {(includedGenres.length > 0 || excludedGenres.length > 0 || selectedPerson) && (
+              <div className="flex flex-wrap items-center gap-3">
+                <Marginalia
+                  className={isDemoMode ? 'text-rustdeep' : 'text-moss'}
+                  title={isDemoMode ? 'Reading a sample issue on a shared key' : 'Using your own TMDb key'}
+                >
+                  {isDemoMode ? 'Sample issue' : 'Your key'}
+                </Marginalia>
+                <span aria-hidden="true" className="rule-vertical hidden h-3 sm:block" />
+                <button
+                  type="button"
+                  onClick={handleResetKey}
+                  className="label-caps text-ink/62 transition-colors duration-[180ms] ease-cabinet hover:text-rustdeep"
+                >
+                  Change key
+                </button>
+              </div>
+
+              {/* Search */}
+              <div className="flex items-center gap-3">
+                <div
+                  className={`flex items-center overflow-hidden border-ink/30 transition-all duration-300 ease-cabinet ${
+                    isSearchOpen ? 'w-56 border-b opacity-100 sm:w-72' : 'w-0 border-b-0 opacity-0'
+                  }`}
+                >
+                  <input
+                    ref={searchRef}
+                    type="search"
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    placeholder="Search the archive"
+                    aria-label="Search the archive"
+                    className="label-caps w-full border-0 bg-transparent !text-[11px] text-ink placeholder-ink/62 focus:outline-none"
+                  />
+                  {searchQuery ? (
                     <button
-                      onClick={clearGenres}
-                      className="px-3 py-1.5 text-[10px] font-mono uppercase tracking-widest border border-red-900 text-red-500 hover:bg-red-900/10 transition-all duration-300 flex items-center gap-1 animate-fade-in"
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="px-2 text-ink/62 transition-colors duration-[180ms] ease-cabinet hover:text-rustdeep"
+                      aria-label="Clear the search"
                     >
-                      <X size={10} /> Clear
+                      <X size={12} />
                     </button>
-                )}
+                  ) : null}
+                </div>
 
-                 {/* Active Person Pill - Conditional */}
-                {selectedPerson && (
-                  <button
-                      onClick={() => setSelectedPerson(null)}
-                      className="px-3 py-1.5 text-[10px] font-mono uppercase tracking-widest border border-purple-500 text-purple-400 bg-purple-900/10 hover:bg-purple-900/20 transition-all duration-300 flex items-center gap-1.5 animate-fade-in"
-                  >
-                      <UserMinus size={10} />
-                      {selectedPerson.name}
-                  </button>
-                )}
-            </div>
-
-            {/* GENRE LIST: Static Flex Container */}
-            <div className="flex flex-wrap gap-2 items-center">
-              {POPULAR_GENRES.map((genre) => {
-                const isIncluded = includedGenres.includes(genre.id);
-                const isExcluded = excludedGenres.includes(genre.id);
-                
-                let buttonClass = 'bg-transparent text-gray-500 border-gray-800 hover:border-gray-500 hover:text-gray-300'; // Default
-                if (isIncluded) {
-                    buttonClass = 'bg-white text-black border-white font-bold';
-                } else if (isExcluded) {
-                    buttonClass = 'bg-red-900/10 text-red-500 border-red-500/50 hover:border-red-500 hover:bg-red-900/20 line-through decoration-red-500/50';
-                }
-                
-                return (
-                  <button
-                    key={`${genre.id}-${genre.name}`}
-                    onClick={() => handleGenreToggle(genre.id)}
-                    className={`px-3 py-1.5 text-[10px] font-mono uppercase tracking-widest border transition-all duration-300 flex items-center gap-1.5 ${buttonClass}`}
-                  >
-                    {isIncluded && <PlusCircle size={8} />}
-                    {isExcluded && <MinusCircle size={8} />}
-                    {genre.name}
-                  </button>
-                );
-              })}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSearchOpen(o => !o);
+                    window.setTimeout(() => searchRef.current?.focus(), 60);
+                  }}
+                  className={`transition-colors duration-[180ms] ease-cabinet ${
+                    isSearchOpen || debouncedSearchQuery ? 'text-rustdeep' : 'text-ink/62 hover:text-ink'
+                  }`}
+                  aria-label="Toggle search"
+                  title="Toggle search"
+                  aria-expanded={isSearchOpen}
+                >
+                  <Search size={17} strokeWidth={1.5} />
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* Content Area */}
-      <main className="max-w-5xl mx-auto min-h-[50vh] relative z-0">
-        {/* DISCOVER VIEW */}
-        {viewMode === 'discover' && (
-           <>
-              {loading ? (
-                <div className="flex flex-col items-center justify-center h-64 gap-4 text-gray-600 animate-pulse">
-                  <Loader2 className="animate-spin" size={32} />
-                  <span className="font-mono text-xs uppercase tracking-widest">
-                    {debouncedSearchQuery ? 'Searching Database...' : 'Discovering...'}
-                  </span>
+          {debouncedSearchQuery ? (
+            <p className="label-caps mt-4 animate-fade-in text-rustdeep">
+              Searching the archive for &ldquo;{debouncedSearchQuery}&rdquo;
+            </p>
+          ) : null}
+
+          <span aria-hidden="true" className="ink-rule mt-6 block" />
+        </header>
+
+        {/* ================= THE CABINET (hero) ================= */}
+        <section data-section="index" id="hero" className="mt-14">
+          <Hero
+            leadShow={leadShow}
+            apiKey={apiKey}
+            issue={issue}
+            isSaved={leadShow ? isInWatchlist(leadShow.id) : false}
+            onSave={addToWatchlist}
+            onRemove={removeFromWatchlist}
+          />
+        </section>
+
+        <Divider ornament="✦" className="my-20" />
+
+        {/* ================= BODY: contents + departments ================= */}
+        <div className="grid grid-cols-1 gap-x-16 gap-y-12 lg:grid-cols-[210px_minmax(0,1fr)]">
+          <IndexNav
+            active={activeSection}
+            onNavigate={goToSection}
+            rotationCount={watchlist.length}
+            indexCount={shows.length}
+          />
+
+          <main className="min-w-0">
+            {/* ---------- I. In Rotation ---------- */}
+            <section data-section="rotation" id="rotation" aria-labelledby="rotation-title" className="scroll-mt-32">
+              <div className="flex flex-wrap items-end justify-between gap-6">
+                <div>
+                  <Marginalia as="p" className="text-rustdeep">
+                    Department I
+                  </Marginalia>
+                  <h2 id="rotation-title" className="mt-3 font-display display-soft text-[clamp(1.9rem,3.2vw,2.6rem)] font-light italic leading-[1.05] tracking-hair">
+                    In Rotation
+                  </h2>
+                  <p className="mt-3 max-w-[52ch] text-[16px] leading-[1.65] text-ink/72">
+                    What you have shelved, and what it will cost you in hours. Sorted any
+                    way you like — shortest binge first is the house favourite.
+                  </p>
                 </div>
-              ) : error ? (
-                 <div className="flex flex-col items-center justify-center h-64 gap-4 text-red-500">
-                   <Info size={32} />
-                   <p className="font-mono text-sm">{error}</p>
-                   <button 
-                      onClick={() => loadData()}
-                      className="text-xs border border-red-900 px-4 py-2 hover:bg-red-900/20 transition-colors uppercase"
-                   >
-                      Retry
-                   </button>
-                 </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-12">
-                  {shows.map((show) => (
-                    <ShowCard 
-                      key={show.id} 
-                      show={show} 
-                      apiKey={apiKey} 
+
+                {watchlist.length > 0 ? (
+                  <div className="flex flex-col items-start gap-3 sm:items-end">
+                    <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
+                      <Marginalia>
+                        {watchlistStats.totalShows} {watchlistStats.totalShows === 1 ? 'title' : 'titles'} shelved
+                      </Marginalia>
+                      <Marginalia title="Estimated total runtime of everything shelved">
+                        Backlog: {formatHours(watchlistStats.totalBingeHours)}
+                      </Marginalia>
+                    </div>
+                    <SortSelector
+                      selectedSort={watchlistSortBy}
+                      onSelect={setWatchlistSortBy}
+                      options={WATCHLIST_SORT_OPTIONS}
+                      label="Shelf"
+                    />
+                  </div>
+                ) : null}
+              </div>
+
+              <span aria-hidden="true" className="ink-rule mt-6 block" />
+
+              {sortedWatchlist.length > 0 ? (
+                <div className="mt-10 flex flex-col gap-10">
+                  {sortedWatchlist.map((item, i) => (
+                    <ShowCard
+                      key={item.id}
+                      show={item}
+                      apiKey={apiKey}
+                      variant="notebook"
+                      index={i + 1}
+                      isSavedFor={isInWatchlist}
+                      watchedFor={watchedFor}
+                      onSave={addToWatchlist}
+                      onRemove={removeFromWatchlist}
                     />
                   ))}
                 </div>
-              )}
-
-              {!loading && !error && shows.length === 0 && (
-                <div className="text-center py-20 text-gray-600 font-mono text-sm">
-                  {debouncedSearchQuery 
-                    ? `No results found for "${debouncedSearchQuery}"`
-                    : "No results found matching this criteria."}
+              ) : (
+                <div className="mt-10 border border-ink/15 bg-paper2 p-8 sm:p-10">
+                  <p aria-hidden="true" className="ornament mb-4">
+                    ✦
+                  </p>
+                  <p className="font-display text-[21px] italic leading-snug text-ink/80">
+                    The shelf is bare. Shelve something from the index and it will appear
+                    here, with its hours printed honestly beside it.
+                  </p>
+                  <button type="button" onClick={() => goToSection('index')} className="btn-rule mt-6">
+                    <Bookmark size={11} />
+                    Go to the index
+                  </button>
                 </div>
               )}
-           </>
-        )}
+            </section>
 
-        {/* WATCHLIST VIEW */}
-        {viewMode === 'watchlist' && (
-           <>
-              {sortedWatchlist.length > 0 ? (
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-12 animate-fade-in-up">
-                    {sortedWatchlist.map((show) => (
-                      <ShowCard 
-                        key={show.id} 
-                        show={show} 
-                        apiKey={apiKey} 
+            <Divider ornament="§" className="my-20" />
+
+            {/* ---------- II. The Index ---------- */}
+            <section data-section="index" id="index" aria-labelledby="index-title" className="scroll-mt-32">
+              <div className="flex flex-wrap items-end justify-between gap-6">
+                <div>
+                  <Marginalia as="p" className="text-rustdeep">
+                    Department II
+                  </Marginalia>
+                  <h2 id="index-title" className="mt-3 font-display display-soft text-[clamp(1.9rem,3.2vw,2.6rem)] font-light italic leading-[1.05] tracking-hair">
+                    The Index
+                  </h2>
+                  <p className="mt-3 max-w-[52ch] text-[16px] leading-[1.65] text-ink/72">
+                    Every entry is filtered by hand, not ranked for you. Exclude a genre
+                    outright, or read in only the languages you can follow without a dub.
+                  </p>
+                </div>
+
+                {/* Read as: leaflet or notebook entry */}
+                <div className="flex flex-col items-start gap-2 sm:items-end">
+                  <Marginalia>Read as</Marginalia>
+                  <div className="flex" role="group" aria-label="Card style">
+                    {(['leaflet', 'notebook'] as const).map(variant => (
+                      <button
+                        key={variant}
+                        type="button"
+                        onClick={() => setCardVariant(variant)}
+                        aria-pressed={cardVariant === variant}
+                        className={`label-caps border px-3 py-1.5 transition-colors duration-[180ms] ease-cabinet first:-mr-px ${
+                          cardVariant === variant
+                            ? 'border-ink bg-ink text-paper'
+                            : 'border-ink/25 text-ink/72 hover:border-ink/60 hover:text-ink'
+                        }`}
+                      >
+                        {variant === 'leaflet' ? 'Leaflet' : 'Notebook'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* ---- Filter desk ---- */}
+              <div
+                className={`mt-8 border border-ink/15 bg-paper2 p-6 transition-opacity duration-500 ease-cabinet sm:p-8 ${
+                  debouncedSearchQuery ? 'pointer-events-none opacity-25' : 'opacity-100'
+                }`}
+              >
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+                  <button
+                    type="button"
+                    onClick={toggleGenreMode}
+                    className="label-caps border border-ink/25 px-3 py-1.5 text-ink/72 transition-colors duration-[180ms] ease-cabinet hover:border-ink hover:text-ink"
+                    title={genreMode === 'OR' ? 'Match any selected genre' : 'Match all selected genres'}
+                  >
+                    Match: {genreMode === 'OR' ? 'any' : 'all'}
+                  </button>
+
+                  {includedGenres.length > 0 || excludedGenres.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={clearGenres}
+                      className="label-caps animate-fade-in inline-flex items-center gap-1.5 border border-rust/50 px-3 py-1.5 text-rustdeep transition-colors duration-[180ms] ease-cabinet hover:border-rust hover:bg-rust hover:text-paper"
+                    >
+                      <X size={10} />
+                      Clear genres
+                    </button>
+                  ) : null}
+
+                  {isNumericFilterActive ? (
+                    <button
+                      type="button"
+                      onClick={resetNumericFilters}
+                      className="label-caps animate-fade-in text-ink/62 transition-colors duration-[180ms] ease-cabinet hover:text-rustdeep"
+                    >
+                      Reset figures
+                    </button>
+                  ) : null}
+
+                  <Marginalia as="p" className="ml-auto">
+                    First click includes · second excludes
+                  </Marginalia>
+                </div>
+
+                {/* Genres */}
+                <div className="mt-5 flex flex-wrap gap-x-2 gap-y-2">
+                  {POPULAR_GENRES.map(genre => {
+                    const isIncluded = includedGenres.includes(genre.id);
+                    const isExcluded = excludedGenres.includes(genre.id);
+
+                    const state = isIncluded
+                      ? 'border-ink bg-ink font-bold text-paper'
+                      : isExcluded
+                      ? 'border-rust/50 text-rustdeep line-through decoration-rust/60'
+                      : 'border-ink/20 text-ink/72 hover:border-ink/50 hover:text-ink';
+
+                    return (
+                      <button
+                        key={`${genre.id}-${genre.name}`}
+                        type="button"
+                        onClick={() => handleGenreToggle(genre.id)}
+                        aria-pressed={isIncluded ? true : isExcluded ? 'mixed' : false}
+                        className={`label-caps border px-3 py-1.5 transition-colors duration-[180ms] ease-cabinet ${state}`}
+                      >
+                        {isIncluded ? '+ ' : isExcluded ? '− ' : ''}
+                        {genre.name}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <span aria-hidden="true" className="ink-rule-soft my-6 block" />
+
+                {/* Figures */}
+                <div className="flex flex-wrap items-center gap-x-7 gap-y-4">
+                  <label className="label-caps flex items-baseline gap-2 text-ink/72">
+                    <span>Rated at least</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="10"
+                      step="0.1"
+                      value={minRating}
+                      onChange={e => setMinRating(e.target.value)}
+                      className="field w-14 text-center !text-[11px] font-bold text-ink"
+                    />
+                  </label>
+
+                  <label className="label-caps flex items-baseline gap-2 text-ink/72">
+                    <span>Voted at least</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={minVotes}
+                      onChange={e => setMinVotes(e.target.value)}
+                      className="field w-20 text-center !text-[11px] font-bold text-ink"
+                    />
+                  </label>
+
+                  <YearRangeSelector
+                    minYear={MIN_YEAR_LIMIT}
+                    maxYear={MAX_YEAR_LIMIT}
+                    selectedRange={yearRange}
+                    onChange={setYearRange}
+                  />
+
+                  <SortSelector
+                    selectedSort={sortBy}
+                    onSelect={val => {
+                      setSortBy(val);
+                      setActiveCollection(null);
+                      setPage(1);
+                    }}
+                  />
+
+                  <LanguageSelector
+                    includedLangs={includedLanguages}
+                    excludedLangs={excludedLanguages}
+                    onToggle={handleLanguageToggle}
+                    onClear={() => {
+                      setIncludedLanguages([]);
+                      setExcludedLanguages([]);
+                      setActiveCollection(null);
+                      setPage(1);
+                    }}
+                  />
+                </div>
+
+                {/* Summary line */}
+                <div className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-ink/12 pt-4">
+                  <Marginalia className="text-ink/62">Filed under:</Marginalia>
+                  {!hasAnyFilter && !debouncedSearchQuery ? (
+                    <Marginalia>everything, unfiltered</Marginalia>
+                  ) : null}
+                  {filterSummary.includedNames.length > 0 ? (
+                    <Marginalia className="text-ink/72">
+                      {filterSummary.includedNames.join(genreMode === 'AND' ? ' + ' : ' / ')}
+                      {filterSummary.includedNames.length > 1 ? ` (${genreMode === 'AND' ? 'all' : 'any'})` : ''}
+                    </Marginalia>
+                  ) : null}
+                  {filterSummary.excludedNames.length > 0 ? (
+                    <Marginalia className="text-rustdeep line-through decoration-rust/60">
+                      {filterSummary.excludedNames.join(', ')}
+                    </Marginalia>
+                  ) : null}
+                  {activeCollection ? (
+                    <Marginalia className="text-rustdeep">
+                      · from collection {COLLECTION_NUMERAL[activeCollection] ?? ''}
+                    </Marginalia>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* ---- Entries ---- */}
+              <div className="mt-12 min-h-[40vh]">
+                {loading ? (
+                  <div className="flex flex-col items-center justify-center gap-4 py-24 text-ink/62">
+                    <Loader2 className="animate-spin" size={26} />
+                    <Marginalia>
+                      {debouncedSearchQuery ? 'Searching the archive' : 'Pulling the plates'}
+                    </Marginalia>
+                  </div>
+                ) : error ? (
+                  <div className="flex flex-col items-center justify-center gap-4 py-24 text-rustdeep">
+                    <Info size={26} />
+                    <p className="text-[15px]">{error}</p>
+                    <button type="button" onClick={loadData} className="btn-rule">
+                      Try again
+                    </button>
+                  </div>
+                ) : shows.length === 0 ? (
+                  <div className="py-24 text-center">
+                    <p aria-hidden="true" className="ornament mb-4">
+                      ✦
+                    </p>
+                    <p className="font-display text-[21px] italic leading-snug text-ink/72">
+                      {debouncedSearchQuery
+                        ? `Nothing in the archive answers to “${debouncedSearchQuery}”.`
+                        : 'Nothing matches that combination. Loosen a figure, or put a genre back.'}
+                    </p>
+                  </div>
+                ) : cardVariant === 'leaflet' ? (
+                  <div className="grid grid-cols-1 gap-x-12 gap-y-14 sm:grid-cols-2 xl:grid-cols-3">
+                    {shows.map((show, i) => (
+                      <ShowCard
+                        key={show.id}
+                        show={show}
+                        apiKey={apiKey}
+                        variant="leaflet"
+                        index={i + 1}
+                        isSavedFor={isInWatchlist}
+                        watchedFor={watchedFor}
+                        onSave={addToWatchlist}
+                        onRemove={removeFromWatchlist}
                       />
                     ))}
-                 </div>
-              ) : (
-                 <div className="flex flex-col items-center justify-center h-96 text-center animate-fade-in">
-                    <Bookmark size={48} className="text-gray-800 mb-6" strokeWidth={1} />
-                    <h3 className="text-xl text-gray-400 font-thin mb-2">Your backlog is empty.</h3>
-                    <p className="text-sm text-gray-600 font-mono uppercase tracking-widest">Go hunt for shows.</p>
-                    <button 
-                       onClick={() => setViewMode('discover')}
-                       className="mt-8 border border-gray-700 text-gray-400 px-6 py-2 hover:bg-gray-800 hover:text-white transition-colors text-xs font-mono uppercase tracking-widest"
-                    >
-                       Start Hunting
-                    </button>
-                 </div>
-              )}
-           </>
-        )}
-      </main>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-10">
+                    {shows.map((show, i) => (
+                      <ShowCard
+                        key={show.id}
+                        show={show}
+                        apiKey={apiKey}
+                        variant="notebook"
+                        index={i + 1}
+                        isSavedFor={isInWatchlist}
+                        watchedFor={watchedFor}
+                        onSave={addToWatchlist}
+                        onRemove={removeFromWatchlist}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
 
-      {/* Pagination - Only for Discover */}
-      {viewMode === 'discover' && !loading && !error && shows.length > 0 && (
-        <div className="max-w-5xl mx-auto mt-20 pt-8 border-t border-gray-900 flex justify-between items-center">
-          <button 
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="group flex items-center gap-3 text-gray-500 hover:text-white transition-colors uppercase text-xs font-mono tracking-widest disabled:opacity-30 disabled:hover:text-gray-500"
-          >
-            <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
-            Previous
-          </button>
-          
-          <div className="hidden md:flex gap-2">
-             {[...Array(3)].map((_, i) => (
-                 <div key={i} className={`w-1 h-1 rounded-full ${i === 1 ? 'bg-white' : 'bg-gray-800'}`}></div>
-             ))}
+              {/* ---- Pagination, set like a page turn ---- */}
+              {!loading && !error && shows.length > 0 ? (
+                <nav
+                  aria-label="Index pages"
+                  className="mt-16 flex items-center justify-between border-t border-ink/15 pt-6"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    className="group btn-rule !border-0 !px-0 text-ink/72 hover:!bg-transparent hover:text-ink disabled:hover:text-ink/72"
+                  >
+                    <ArrowLeft size={12} className="transition-transform duration-[180ms] ease-cabinet group-hover:-translate-x-1" />
+                    Previous
+                  </button>
+
+                  <Marginalia>
+                    p. {pageLabel} <span className="text-ink/62">/</span>{' '}
+                    {totalPages > 0 ? String(totalPages).padStart(3, '0') : '—'}
+                  </Marginalia>
+
+                  <button
+                    type="button"
+                    onClick={() => setPage(p => p + 1)}
+                    disabled={page >= totalPages}
+                    className="group btn-rule !border-0 !px-0 text-ink/72 hover:!bg-transparent hover:text-ink disabled:hover:text-ink/72"
+                  >
+                    Next
+                    <ArrowRight size={12} className="transition-transform duration-[180ms] ease-cabinet group-hover:translate-x-1" />
+                  </button>
+                </nav>
+              ) : null}
+            </section>
+
+            <Divider ornament="◆" className="my-20" />
+
+            {/* ---------- III. Editor's Desk ---------- */}
+            <section data-section="desk" id="desk" aria-labelledby="desk-title" className="scroll-mt-32">
+              <EditorDesk />
+            </section>
+
+            <Divider ornament="✦" className="my-20" />
+
+            {/* ---------- IV. Collections ---------- */}
+            <section data-section="collections" id="collections" aria-labelledby="collections-title" className="scroll-mt-32">
+              <Collections onApply={applyCollection} activeId={activeCollection} />
+            </section>
+          </main>
+        </div>
+
+        {/* ================= V. COLOPHON ================= */}
+        <footer data-section="colophon" id="colophon" className="mt-24 scroll-mt-32">
+          <span aria-hidden="true" className="ink-rule mb-10 block" />
+
+          <div className="grid grid-cols-1 gap-x-14 gap-y-10 lg:grid-cols-12">
+            <div className="lg:col-span-4">
+              <Marginalia as="p" className="text-rustdeep">
+                Department V
+              </Marginalia>
+              <h2 className="mt-3 font-display display-soft text-[26px] font-light italic leading-tight tracking-hair">
+                Colophon
+              </h2>
+              <p className="mt-3 text-[14.5px] leading-[1.65] text-ink/72">
+                Cabinet is a client-side reading room. Your TMDb key lives in your
+                browser and is sent to TMDb alone; your shelf and episode marks are kept
+                in local storage and nowhere else.
+              </p>
+            </div>
+
+            <div className="lg:col-span-4">
+              <Marginalia as="p" className="mb-4">
+                On the seals
+              </Marginalia>
+              <ul className="flex flex-col gap-2.5 text-[13.5px] leading-snug text-ink/72">
+                <li>
+                  <span className="font-medium text-ink">New season</span> — still on the
+                  air, last aired within fourteen months.
+                </li>
+                <li>
+                  <span className="font-medium text-ink">Season finale</span> — ended
+                  within the last twelve months.
+                </li>
+                <li>
+                  <span className="font-medium text-ink">Masterpiece</span> — rated 8.2 or
+                  better on five hundred votes or more.
+                </li>
+                <li>
+                  <span className="font-medium text-ink">Overlooked</span> — rated 7.4 or
+                  better on fewer than two hundred and fifty.
+                </li>
+                <li>
+                  <span className="font-medium text-ink">Short form</span> — six hours or
+                  fewer, start to finish.
+                </li>
+              </ul>
+              <Marginalia as="p" className="mt-4">
+                No star ratings. No match percentages. No bars.
+              </Marginalia>
+            </div>
+
+            <div className="lg:col-span-4">
+              <Marginalia as="p" className="mb-4">
+                Types &amp; data
+              </Marginalia>
+              <ul className="flex flex-col gap-2.5 text-[13.5px] leading-snug text-ink/72">
+                <li>
+                  Set in <span className="font-medium text-ink">Fraunces</span> (display),{' '}
+                  <span className="font-medium text-ink">Inter</span> (text) and{' '}
+                  <span className="font-medium text-ink">JetBrains Mono</span> (marginalia).
+                </li>
+                <li>Paper #F2EBDD, ink #1A1612, oxide red #B5482A. No blue anywhere.</li>
+                <li>
+                  Titles, stills and credits filed by{' '}
+                  <a
+                    href="https://www.themoviedb.org/"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="hand-underline text-ink transition-colors duration-[180ms] ease-cabinet hover:text-rustdeep"
+                  >
+                    TMDb
+                  </a>
+                  . Runtimes are computed from episode counts.
+                </li>
+              </ul>
+            </div>
           </div>
 
-          <button 
-            onClick={() => setPage(p => p + 1)}
-            disabled={page >= totalPages}
-            className="group flex items-center gap-3 text-gray-500 hover:text-white transition-colors uppercase text-xs font-mono tracking-widest disabled:opacity-30 disabled:hover:text-gray-500"
-          >
-            Next Page
-            <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-          </button>
-        </div>
-      )}
-      
-      <footer className="max-w-5xl mx-auto mt-24 text-center text-[10px] text-gray-800 uppercase tracking-widest font-mono">
-         Powered by TMDb &bull; Cultivated Selection
-      </footer>
+          <div className="mt-12 flex flex-wrap items-baseline justify-between gap-4 border-t border-ink/12 pt-6">
+            <Marginalia>
+              Issue No. {toRoman(issue)} · {dateline('Berlin')}
+            </Marginalia>
+            <Marginalia>
+              {watchlistStats.totalShows} shelved · {formatHours(watchlistStats.totalBingeHours)} of backlog
+            </Marginalia>
+            <Marginalia>Cabinet — a reading room with screens</Marginalia>
+          </div>
+        </footer>
+      </div>
     </div>
   );
+};
+
+const COLLECTION_NUMERAL: Record<string, string> = {
+  'late-night': 'i',
+  'long-winter': 'ii',
+  elsewhere: 'iii',
+  'one-evening': 'iv',
 };
 
 export default App;

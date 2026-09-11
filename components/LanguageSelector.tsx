@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Globe, Search, Check, X } from 'lucide-react';
+import { Check, Search, X } from 'lucide-react';
 import { ALL_LANGUAGES, PRIORITY_LANGUAGES } from '../constants';
 
 interface LanguageSelectorProps {
@@ -14,7 +14,12 @@ type Lang = { code: string; name: string };
 // The "All" pseudo-entry is rendered separately, keep it out of the list logic
 const LANGUAGES: Lang[] = ALL_LANGUAGES.filter(l => l.code !== '');
 
-export const LanguageSelector: React.FC<LanguageSelectorProps> = ({ includedLangs, excludedLangs, onToggle, onClear }) => {
+export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
+  includedLangs,
+  excludedLangs,
+  onToggle,
+  onClear,
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -24,211 +29,198 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({ includedLang
   const hasExcludes = excludedLangs.length > 0;
   const hasSelection = hasIncludes || hasExcludes;
 
-  // Close when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsOpen(false);
+    };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', onKey);
+    };
   }, []);
 
-  // Auto-focus search input when opened / reset search on close
   useEffect(() => {
-    if (isOpen && inputRef.current) {
-      inputRef.current.focus();
-    }
-    if (!isOpen) {
-        setSearchQuery(''); // Reset search on close
-    }
+    if (isOpen && inputRef.current) inputRef.current.focus();
+    if (!isOpen) setSearchQuery('');
   }, [isOpen]);
 
   const nameOf = (code: string) => ALL_LANGUAGES.find(l => l.code === code)?.name || code.toUpperCase();
 
-  // Compact summary: "English + Japanese" / "English +2" / "Hindi +1"
   const summarize = (codes: string[]) => {
     if (codes.length === 1) return nameOf(codes[0]);
     if (codes.length === 2) return `${nameOf(codes[0])} + ${nameOf(codes[1])}`;
     return `${nameOf(codes[0])} +${codes.length - 1}`;
   };
 
-  // Full breakdown for the tooltip
   const fullTitle = !hasSelection
-    ? 'Language: All'
+    ? 'Language: all'
     : [
-        hasIncludes ? `Include: ${includedLangs.map(nameOf).join(', ')}` : null,
-        hasExcludes ? `Exclude: ${excludedLangs.map(nameOf).join(', ')}` : null,
-      ].filter(Boolean).join(' | ');
+        hasIncludes ? `Read in: ${includedLangs.map(nameOf).join(', ')}` : null,
+        hasExcludes ? `Excluding: ${excludedLangs.map(nameOf).join(', ')}` : null,
+      ]
+        .filter(Boolean)
+        .join(' · ');
 
-  // Sorting and Filtering Logic
   const filteredLanguages = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
-    // Filter first based on search
-    const matches = LANGUAGES.filter(lang =>
-      lang.name.toLowerCase().includes(query) ||
-      lang.code.toLowerCase().includes(query)
+    const matches = LANGUAGES.filter(
+      lang => lang.name.toLowerCase().includes(query) || lang.code.toLowerCase().includes(query),
     );
 
-    // If searching, just show matches (skip priority grouping to keep it simple)
     if (query) return matches;
 
-    // If NO search, apply the Priority Grouping Logic
-    const priorityItems = PRIORITY_LANGUAGES
-        .map(code => matches.find(l => l.code === code))
-        .filter((l): l is Lang => !!l);
+    const priorityItems = PRIORITY_LANGUAGES.map(code => matches.find(l => l.code === code)).filter(
+      (l): l is Lang => !!l,
+    );
 
     const otherItems = matches
-        .filter(l => !PRIORITY_LANGUAGES.includes(l.code))
-        .sort((a, b) => a.name.localeCompare(b.name));
+      .filter(l => !PRIORITY_LANGUAGES.includes(l.code))
+      .sort((a, b) => a.name.localeCompare(b.name));
 
-    return {
-        priority: priorityItems,
-        others: otherItems
-    };
+    return { priority: priorityItems, others: otherItems };
   }, [searchQuery]);
 
-  // Shared row renderer. Each click cycles: include -> exclude -> off
+  // Each click cycles: include → exclude → off
   const renderRow = (lang: Lang) => {
     const isIncluded = includedLangs.includes(lang.code);
     const isExcluded = excludedLangs.includes(lang.code);
 
     const stateClass = isIncluded
-        ? 'text-white font-bold'
-        : isExcluded
-        ? 'text-red-400 line-through decoration-red-600'
-        : 'text-gray-500';
+      ? 'font-bold text-ink'
+      : isExcluded
+      ? 'text-rustdeep line-through decoration-rust/60'
+      : 'text-ink/72';
 
     return (
-        <button
-            key={lang.code}
-            onClick={() => onToggle(lang.code)}
-            title={isIncluded ? 'Included — click to exclude' : isExcluded ? 'Excluded — click to remove' : 'Click to include'}
-            className={`w-full text-left px-4 py-2 text-xs font-mono uppercase tracking-widest hover:bg-white hover:text-black transition-colors flex justify-between items-center gap-2 ${stateClass}`}
-        >
-            <span className="truncate">{lang.name}</span>
-            {isIncluded && <Check size={12} className="flex-shrink-0" />}
-            {isExcluded && <X size={12} className="flex-shrink-0 text-red-500" />}
-        </button>
+      <button
+        key={lang.code}
+        type="button"
+        onClick={() => onToggle(lang.code)}
+        aria-pressed={isIncluded ? true : isExcluded ? 'mixed' : false}
+        title={isIncluded ? 'Included — click again to exclude' : isExcluded ? 'Excluded — click to clear' : 'Click to include'}
+        className={`label-caps flex w-full items-center justify-between gap-2 px-4 py-2 text-left transition-colors duration-[180ms] ease-cabinet hover:bg-ink hover:text-paper ${stateClass}`}
+      >
+        <span className="truncate">{lang.name}</span>
+        {isIncluded ? <Check size={12} className="flex-shrink-0" /> : null}
+        {isExcluded ? <X size={12} className="flex-shrink-0" /> : null}
+      </button>
     );
   };
 
   const renderList = () => {
-    // Render logic for Search Mode (Flat List)
     if (Array.isArray(filteredLanguages)) {
-        return (
-            <>
-                {filteredLanguages.map(renderRow)}
-                {/* Empty State */}
-                {filteredLanguages.length === 0 && (
-                    <div className="px-4 py-3 text-[10px] text-gray-600 font-mono uppercase text-center">
-                        No matching language
-                    </div>
-                )}
-            </>
-        );
+      return (
+        <>
+          {filteredLanguages.map(renderRow)}
+          {filteredLanguages.length === 0 ? (
+            <p className="label-caps px-4 py-3 text-center text-ink/62">No such language</p>
+          ) : null}
+        </>
+      );
     }
 
-    // Render logic for Default Mode (Grouped)
     return (
-        <>
-            {/* Priority List */}
-            {filteredLanguages.priority.map(renderRow)}
-
-            <div className="h-px bg-gray-800 mx-4 my-1" />
-
-            {/* The Rest */}
-            {filteredLanguages.others.map(renderRow)}
-        </>
+      <>
+        {filteredLanguages.priority.map(renderRow)}
+        <span aria-hidden="true" className="mx-4 my-1 block h-px bg-ink/12" />
+        {filteredLanguages.others.map(renderRow)}
+      </>
     );
   };
 
   return (
     <div className="relative" ref={wrapperRef}>
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
         title={fullTitle}
-        className="flex items-center gap-2 text-gray-500 hover:text-white transition-colors group"
+        aria-expanded={isOpen}
+        className="label-caps flex items-baseline gap-1.5 border-b border-ink/20 pb-0.5 text-ink/72 transition-colors duration-[180ms] ease-cabinet hover:border-ink/60 hover:text-ink"
       >
-        <div className="flex items-center gap-2">
-            <Globe size={14} className={hasSelection ? 'text-white' : 'text-gray-600 group-hover:text-gray-400'} />
-            <span className="text-[10px] font-mono uppercase tracking-widest border-b border-transparent group-hover:border-gray-500 pb-0.5">
-                <span className="text-gray-500 group-hover:text-gray-400 transition-colors">Language: </span>
-                {!hasSelection ? (
-                    <span className="text-white font-bold">All</span>
-                ) : (
-                    <span className="font-bold">
-                        {hasIncludes && <span className="text-white">{summarize(includedLangs)}</span>}
-                        {hasIncludes && hasExcludes && <span className="text-gray-600 mx-0.5">·</span>}
-                        {hasExcludes && (
-                            <span className="text-red-500 line-through decoration-red-900 decoration-2">− {summarize(excludedLangs)}</span>
-                        )}
-                    </span>
-                )}
-            </span>
-        </div>
+        <span className="text-ink/62">Read in:</span>
+        {!hasSelection ? (
+          <span className="font-bold text-ink">All</span>
+        ) : (
+          <span className="font-bold">
+            {hasIncludes ? <span className="text-ink">{summarize(includedLangs)}</span> : null}
+            {hasIncludes && hasExcludes ? <span className="mx-1 text-ink/62">·</span> : null}
+            {hasExcludes ? (
+              <span className="text-rustdeep line-through decoration-rust/60">− {summarize(excludedLangs)}</span>
+            ) : null}
+          </span>
+        )}
       </button>
 
-      {isOpen && (
-        <div className="absolute top-full left-0 mt-2 w-56 bg-[#111] border border-gray-800 shadow-2xl z-[100] animate-fade-in origin-top-left">
-          {/* Search Header */}
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-800">
-            <Search size={12} className="text-gray-500" />
+      {isOpen ? (
+        <div className="panel animate-fade-in absolute left-0 top-full z-[100] mt-2 w-56 origin-top-left">
+          <div className="flex items-center gap-2 border-b border-ink/15 px-3 py-2">
+            <Search size={12} className="text-ink/62" aria-hidden="true" />
             <input
               ref={inputRef}
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search..."
-              className="bg-transparent border-none text-white text-xs font-mono w-full focus:outline-none placeholder-gray-700 uppercase"
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Find a language"
+              aria-label="Find a language"
+              className="label-caps w-full border-0 bg-transparent text-ink placeholder-ink/62 focus:outline-none"
             />
           </div>
 
-          {/* List */}
-          <div className="max-h-60 overflow-y-auto py-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-800 hover:[&::-webkit-scrollbar-thumb]:bg-gray-600">
-             {/* 'All' Option - clears both include & exclude */}
-             <button
-                onClick={() => {
-                    onClear();
-                    setIsOpen(false);
-                }}
-                className={`w-full text-left px-4 py-2 text-xs font-mono uppercase tracking-widest hover:bg-white hover:text-black transition-colors flex justify-between items-center ${!hasSelection ? 'text-white font-bold' : 'text-gray-500'}`}
-             >
-                All
-                {!hasSelection && <Check size={12} />}
-             </button>
+          <div className="max-h-60 overflow-y-auto py-1">
+            <button
+              type="button"
+              onClick={() => {
+                onClear();
+                setIsOpen(false);
+              }}
+              className={`label-caps flex w-full items-center justify-between px-4 py-2 text-left transition-colors duration-[180ms] ease-cabinet hover:bg-ink hover:text-paper ${
+                !hasSelection ? 'font-bold text-ink' : 'text-ink/72'
+              }`}
+            >
+              All languages
+              {!hasSelection ? <Check size={12} /> : null}
+            </button>
 
-             <div className="h-px bg-gray-800 mx-4 my-1" />
+            <span aria-hidden="true" className="mx-4 my-1 block h-px bg-ink/12" />
 
-             {renderList()}
+            {renderList()}
           </div>
 
-          {/* Footer: hint + actions */}
-          <div className="flex items-center justify-between gap-2 px-3 py-2 border-t border-gray-800">
-            <span className="text-[8px] text-gray-600 font-mono uppercase tracking-widest leading-tight">
-                1st click: include<br />2nd click: exclude
+          <div className="flex items-center justify-between gap-2 border-t border-ink/15 px-3 py-2">
+            <span className="label-caps leading-tight text-ink/62">
+              First click: read in
+              <br />
+              Second click: exclude
             </span>
-            <div className="flex items-center gap-3 flex-shrink-0">
-                {hasSelection && (
-                    <button
-                        onClick={onClear}
-                        className="text-[9px] font-mono uppercase tracking-widest text-red-500/70 hover:text-red-500 transition-colors"
-                    >
-                        Clear
-                    </button>
-                )}
+            <span className="flex flex-shrink-0 items-center gap-3">
+              {hasSelection ? (
                 <button
-                    onClick={() => setIsOpen(false)}
-                    className="text-[9px] font-mono uppercase tracking-widest text-gray-400 hover:text-white border border-gray-800 hover:border-gray-500 px-2 py-0.5 transition-colors"
+                  type="button"
+                  onClick={onClear}
+                  className="label-caps text-rustdeep transition-colors duration-[180ms] ease-cabinet hover:text-ink"
                 >
-                    Done
+                  Clear
                 </button>
-            </div>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className="btn-rule !px-2 !py-0.5"
+              >
+                Done
+              </button>
+            </span>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 };

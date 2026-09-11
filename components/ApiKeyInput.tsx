@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { Key, ArrowRight, Loader2, PlayCircle } from 'lucide-react';
+import { ArrowRight, Loader2 } from 'lucide-react';
+import { Grain } from './Grain';
+import { Marginalia } from './Marginalia';
+import { dateline, toRoman } from '../utils/editorial';
 
 interface ApiKeyInputProps {
   onSetKey: (key: string) => void;
@@ -7,6 +10,10 @@ interface ApiKeyInputProps {
   error?: string | null;
 }
 
+/**
+ * The reader's pass. The archive is client-side only: your TMDb key never
+ * leaves the browser, and we say so on the card.
+ */
 export const ApiKeyInput: React.FC<ApiKeyInputProps> = ({ onSetKey, onEnterDemo, error }) => {
   const [inputVal, setInputVal] = useState('');
   const [isValidating, setIsValidating] = useState(false);
@@ -21,17 +28,15 @@ export const ApiKeyInput: React.FC<ApiKeyInputProps> = ({ onSetKey, onEnterDemo,
     setValidationError(null);
 
     try {
-      // Validate Key via lightweight API call
       const response = await fetch(`https://api.themoviedb.org/3/configuration?api_key=${key}`);
-      
       if (response.ok) {
         onSetKey(key);
       } else {
-        setValidationError('Invalid API Key. Please check your credentials.');
+        setValidationError('That key was not accepted. Check it against TMDb and try again.');
         setIsValidating(false);
       }
-    } catch (e) {
-      setValidationError('Network error. Failed to validate key.');
+    } catch (err) {
+      setValidationError('Could not reach the archive. Check the connection.');
       setIsValidating(false);
     }
   };
@@ -39,84 +44,99 @@ export const ApiKeyInput: React.FC<ApiKeyInputProps> = ({ onSetKey, onEnterDemo,
   const displayError = validationError || error;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#050505] px-4">
-      <div className="max-w-md w-full animate-fade-in-up">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-light tracking-tighter text-white mb-2">CULTIVATED TV</h1>
-          <p className="text-gray-500 text-sm font-mono uppercase tracking-widest">
-            Access Requires TMDb Credentials
+    <div className="flex min-h-screen items-center justify-center bg-paper px-[var(--margin)] py-16">
+      <Grain />
+
+      <div className="animate-rise w-full max-w-[620px]">
+        <Marginalia as="p" className="mb-8">
+          Issue No. {toRoman(14)} · {dateline('Berlin')}
+        </Marginalia>
+
+        <h1 className="font-display display-wonk text-[clamp(3rem,9vw,5rem)] font-light italic leading-[0.9] tracking-tighter2 text-ink">
+          Cabinet
+        </h1>
+
+        <p className="mt-3 font-display text-[19px] italic leading-snug text-ink/72">
+          A TV series discovery journal. Not a streaming service — a reading room with screens.
+        </p>
+
+        <span aria-hidden="true" className="ink-rule my-8 block" />
+
+        <form onSubmit={handleSubmit} className="page-edge bg-paper p-8">
+          <Marginalia as="p" className="mb-4 text-rustdeep">
+            Reader&rsquo;s pass
+          </Marginalia>
+
+          <p className="mb-6 measure text-[15px] leading-relaxed text-ink/72">
+            The archive is held by TMDb and the key is yours. This page is client-side
+            only: what you type below is stored in your own browser and sent to TMDb
+            alone — never to us, never to anyone else.
           </p>
-        </div>
 
-        <div className="bg-[#111] border border-gray-800 p-8 rounded-sm shadow-2xl">
-          <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-            <div className="space-y-2">
-              <label className="text-xs text-gray-400 font-mono uppercase tracking-widest flex items-center gap-2">
-                <Key size={12} /> Enter API Key
-              </label>
-              <input 
-                type="text" 
-                value={inputVal}
-                onChange={(e) => {
-                    setInputVal(e.target.value);
-                    if (validationError) setValidationError(null);
-                }}
-                placeholder="tmdb_api_key_..."
-                className="w-full bg-black border border-gray-700 text-white p-3 font-mono text-sm focus:outline-none focus:border-white transition-colors placeholder-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                autoFocus
-                disabled={isValidating}
-              />
-              {displayError && (
-                <p className="text-red-500 text-xs font-mono mt-2 animate-fade-in">{displayError}</p>
-              )}
-            </div>
-            
-            <button 
-              type="submit" 
-              disabled={isValidating || inputVal.trim().length === 0}
-              className="group bg-white text-black py-3 px-4 flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-wider hover:bg-gray-200 transition-colors disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:bg-white"
-            >
-              {isValidating ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" /> Verifying...
-                  </>
-              ) : (
-                  <>
-                    Enter System
-                    <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-                  </>
-              )}
-            </button>
-          </form>
-          
-          <div className="mt-4 flex flex-col items-center gap-4">
-             <div className="w-full flex items-center gap-4">
-               <div className="h-px bg-gray-800 flex-1"></div>
-               <span className="text-[10px] text-gray-600 uppercase font-mono tracking-widest">OR</span>
-               <div className="h-px bg-gray-800 flex-1"></div>
-             </div>
+          <label htmlFor="tmdb-key" className="label-caps mb-2 block text-ink/72">
+            TMDb API key
+          </label>
+          <input
+            id="tmdb-key"
+            type="text"
+            value={inputVal}
+            onChange={e => {
+              setInputVal(e.target.value);
+              if (validationError) setValidationError(null);
+            }}
+            placeholder="32 characters, as issued by TMDb"
+            className="field w-full font-mono text-sm text-ink"
+            autoFocus
+            disabled={isValidating}
+            autoComplete="off"
+            spellCheck={false}
+          />
 
-             <button
-                type="button"
-                onClick={onEnterDemo}
-                disabled={isValidating}
-                className="flex items-center gap-2 text-xs text-gray-400 hover:text-white font-mono uppercase tracking-widest border border-gray-800 hover:border-gray-600 rounded-sm px-4 py-2 transition-all"
-             >
-                <PlayCircle size={12} /> Try Demo Version
-             </button>
+          {displayError ? (
+            <p role="alert" className="animate-fade-in mt-3 text-[13px] text-rustdeep">
+              {displayError}
+            </p>
+          ) : null}
+
+          <button
+            type="submit"
+            disabled={isValidating || inputVal.trim().length === 0}
+            className="btn-ink mt-6"
+          >
+            {isValidating ? (
+              <>
+                <Loader2 size={11} className="animate-spin" />
+                Checking the pass
+              </>
+            ) : (
+              <>
+                Enter the reading room
+                <ArrowRight size={11} />
+              </>
+            )}
+          </button>
+
+          <div className="mt-6 flex items-center gap-4">
+            <span aria-hidden="true" className="h-px flex-1 bg-ink/15" />
+            <span className="label-caps text-ink/62">or</span>
+            <span aria-hidden="true" className="h-px flex-1 bg-ink/15" />
           </div>
 
-          <div className="mt-6 text-center pt-6 border-t border-gray-900">
-            <a 
-              href="https://www.themoviedb.org/settings/api" 
-              target="_blank" 
+          <button type="button" onClick={onEnterDemo} disabled={isValidating} className="btn-rule mt-6 w-full justify-center">
+            Read a sample issue
+          </button>
+
+          <div className="mt-8 border-t border-ink/12 pt-5">
+            <a
+              href="https://www.themoviedb.org/settings/api"
+              target="_blank"
               rel="noreferrer"
-              className="text-[10px] text-gray-600 uppercase border-b border-gray-800 hover:text-gray-400 hover:border-gray-600 transition-all pb-0.5"
+              className="label-caps hand-underline inline-block text-ink/72 transition-colors duration-[180ms] ease-cabinet hover:text-ink"
             >
-              Don't have a key? Get one here.
+              No key yet? TMDb issues them free
             </a>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );
