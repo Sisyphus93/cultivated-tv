@@ -1957,6 +1957,11 @@ html {
     --side: 32px;
   }
 
+  /* eight columns on the tablet page (§8.1); blocks span it whole */
+  .grid {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+
   .cover__type,
   .cover__art {
     grid-column: 1 / -1;
@@ -2046,6 +2051,11 @@ html {
   :root {
     --side: 20px;
     --gutter: 18px;
+  }
+
+  /* four columns on the phone page (§8.1) */
+  .grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .masthead__inner {
