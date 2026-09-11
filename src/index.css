@@ -1933,6 +1933,25 @@ html {
 
 /* ---------- 17. Responsive (§12) -------------------------------------- */
 
+/* the masthead is the tight thing between 641 and 900 — shed the date first */
+@media (max-width: 900px) {
+  .masthead__left .meta {
+    display: none;
+  }
+
+  .nav {
+    gap: 14px;
+  }
+
+  .masthead__right {
+    gap: 12px;
+  }
+
+  .search {
+    min-width: 118px;
+  }
+}
+
 @media (max-width: 1024px) {
   :root {
     --side: 32px;
@@ -2077,6 +2096,19 @@ html {
 
   .cover {
     padding-block: 34px var(--rhythm);
+  }
+
+  .cover__critics {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .critic {
+    grid-template-columns: auto auto;
+  }
+
+  .onair-block {
+    justify-content: flex-start;
   }
 
   .display-1 {
