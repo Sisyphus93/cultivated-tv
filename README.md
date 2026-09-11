@@ -1,110 +1,139 @@
-# AIRTIME
+# CABINET
 
-**Television, considered.**
+**A TV series discovery journal.**
 
-A weekly TV-series guide with the soul of a printed listings page and the rigor of a
-film journal. Criticism tells you what matters, a schedule tells you when, a dense
-index lets you hunt.
-
-> This branch replaces the previous "Noir" discovery dashboard (TMDB + Stremio deep
-> links). That app is preserved in the git history, tagged by its old README;
-> everything here is the guide.
+> *"Not a streaming service. A reading room with screens."*
 
 ---
 
-## The idea
+## What changed
 
-Television is a time-based medium: it airs, it returns, it occupies a slot in your
-week. Most streaming UIs pretend otherwise — infinite scroll, no clocks, no seasons.
-AIRTIME leans the other way and borrows from three artifacts:
+This repository began life as **Cultivated TV**, a dark "noir" discovery dashboard. It has
+been rebuilt as **Cabinet**: the same discovery engine underneath, but the interface is now
+set like a printed film quarterly — aged paper, walnut ink, three typefaces, and no
+algorithm-shaped furniture.
 
-| Artifact | What it gives the UI |
-| --- | --- |
-| The printed weekly guide | Hairline rules, dense rows, mono times, channel numbers, issue dates |
-| The film journal | Serif display type, pull quotes, criticism, colophon |
-| The broadcast signal | ON AIR pulse, signal-strength bars, test cards, a tuning ticker |
+Everything the old app could do, it still does: the TMDb-powered index, include/exclude
+genre filtering, multi-language include/exclude, the era slider, binge-liability maths,
+Stremio deep links and the local watchlist. What is new is how it reads.
 
-The site is published in issues — *Issue No. 47, Week of March 9, 2026* — so every
-screen carries a date and a reason to come back. All dates in the guide are pinned to
-the issue week on purpose: this is a printed thing, not a live feed.
+![Legacy screenshot — the previous "Noir" build](homepage.jpg)
 
-## What is on the page
+*The screenshot above is the previous build. It is kept for history, not as a picture of
+Cabinet.*
 
-1. **Tuning ticker** — a slow mono marquee; pauses for pointer or keyboard focus.
-2. **Masthead** — issue number, date, ON AIR, the wordmark (the tittle of the “i” is
-   an accent square), section nav, and a search that filters the Index live.
-3. **Cover story** — 7/12 type against 5/12 key art, one thesis, three critics with
-   signal bars, one call to action.
-4. **Tonight on the dial** — a night section of schedule rows: `21:00 ▏CH 04 ▏TITLE ▏
-   meta ▏▮▮▮ ▏›`. Hover lifts a press-shadowed card that follows the cursor; keyboard
-   focus gets the same card anchored to the row; on phones a tap expands the row.
-5. **Critics’ journal** — a lead piece with a pull quote and two essays, with a
-   drop cap and a “Continue” that actually continues.
-6. **Returning soon** — three countdown wells, gold numerals counting up on reveal.
-7. **The Index** — A–Z by filing title, genre tabs with live counts, every row
-   expandable into its full entry (key art, thesis, blurb, credits).
-8. **Colophon** — giant wordmark at 12%, About / The Guide / Signal, sign-off.
+---
+
+## The departments
+
+The page is one continuous issue, numbered in roman:
+
+| | Department | What it is |
+|---|---|---|
+| **I** | **In Rotation** | Your shelf, as notebook entries, with the backlog costed in hours. |
+| **II** | **The Index** | The full filtered index, readable as *leaflets* or *notebook entries*. |
+| **III** | **Editor's Desk** | The standing essay. Written, not generated. |
+| **IV** | **Late Night, Loud Volume** | Four mood collections. Each one writes real filter state. |
+| **V** | **Colophon** | How the seals are derived, what the types are, where the data comes from. |
+
+**The Clock** — a cinema-ticket stub in the corner of the page — appears once something is
+shelved. It carries the title, the season and episode you are on, and the time remaining.
+There is no player here, so episodes are marked off by hand and kept in local storage.
+
+---
 
 ## Design system
 
-[`DESIGN.md`](DESIGN.md) is the source of truth: tokens, type scale, texture, motifs,
-components, motion, responsiveness, accessibility, and a ledger of the places where
-the specification left a choice to make.
+**Palette.** Aged paper and ink, low-chroma, no blue.
 
-[`preview.html`](preview.html) is a static, build-free render of the same system —
-swatches, the type scale, every motif, buttons, a schedule row, a countdown well —
-for checking the palette and the grain without starting a dev server.
+| Token | Hex | Use |
+|---|---|---|
+| `--ink` | `#1A1612` | Deep walnut. All primary type. |
+| `--paper` | `#F2EBDD` | Aged cream. The page. |
+| `--paper-2` | `#E8DFC9` | Layered surfaces, filter desk, ticket. |
+| `--cloth` | `#C9B79C` | Linen cover tone. |
+| `--rust` | `#B5482A` | Oxide red — the single accent of warmth. |
+| `--rust-deep` | `#9C3A20` | Oxide red at caption sizes, where `--rust` would fail AA. |
+| `--moss` | `#4A5240` | Aged green, secondary accent. |
+| `--gold` / `--gold-deep` | `#B8893E` / `#8A6428` | Seals and ornament; the deeper value for lettering. |
+| `--rule` | `#2A221B` | Hairline rules. |
 
-Rules worth repeating: warm paper, never glass · one accent (tuner red), used about
-six times per viewport · mono for every time, channel and number · no gradients, no
-blur, no star ratings, no radius above 2px · shadows are press shadows, twice in the
-whole product · criticism is the product, so copy is written, never lorem.
+**Type.** `Fraunces` (display, with its `SOFT` and `WONK` axes carrying the hand-drawn
+wobble), `Inter` (running text), `JetBrains Mono` (marginalia, ledger figures, catalogue
+numbers). Headlines are set tight at −0.02em; small caps labels at +0.18em.
+
+**Texture.** Procedural SVG grain at 0.04 opacity, ink rules with a half-pixel bleed,
+hand-drawn underlines drawn in CSS, drop caps, seals tilted −4°, and slightly crooked
+frames — no photographic texture assets anywhere.
+
+**Motion.** One curve for the whole journal: `cubic-bezier(0.2, 0.7, 0.1, 1)`. The hero
+fades over 300ms and rises 12px across 600ms. Card hovers warm the sepia plate by five
+percent, lift the caption 2px and draw the underline. `prefers-reduced-motion` turns all
+of it off.
+
+**Accessibility.** Every string clears WCAG AA against the paper it sits on — measured, not
+assumed. Focus is a 2px ink outline at 2px offset and is never removed. Decorative SVG and
+ornament are `aria-hidden`. There are no star ratings, no rating bars and no match
+percentages; TMDb's vote average is printed small and grey, the way an archivist prints an
+accession number.
+
+---
+
+## The seals
+
+The stamps are derived, never invented. Each one restates data TMDb already returned:
+
+| Seal | Derived from |
+|---|---|
+| **New season** | `Returning Series`, last aired within 14 months |
+| **Season finale** | `Ended`, last aired within 12 months |
+| **Masterpiece** | rated ≥ 8.2 on ≥ 500 votes |
+| **Overlooked** | rated ≥ 7.4 on < 250 votes |
+| **New** | first aired this year |
+| **Complete** | `Ended` |
+| **Short form** | ≤ 6 hours, start to finish |
+
+---
+
+## Privacy & BYOK
+
+Client-side only. Your TMDb key is stored in your browser and sent to TMDb alone — never
+to a server of ours. Your shelf and episode marks live in `localStorage`.
+
+[Get a free TMDb API key](https://www.themoviedb.org/settings/api), or read a sample issue
+on the shared demo key.
+
+---
 
 ## Running it
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173
-npm run build      # tsc --noEmit && vite build → dist/index.html (JS + CSS inlined)
-npm run typecheck
+npm run dev      # dev server on 0.0.0.0:5173
+npm run build    # tsc + vite build
+npm test         # vitest run
 ```
 
-`npm run preview` serves `dist/`. Key art lives in `public/images/` and is referenced
-relatively, so the folder can be hosted from any static origin (Vercel, Netlify, a
-subdirectory, a USB stick).
+## Tests
 
-## Editing the guide
+`npm test` mounts the real `App` against a mocked archive and exercises the actual request
+path — `discoverShows`, the detail fetch, the seal derivation, the shelf, the clock's
+episode maths, the genre three-state cycle, the collection presets and the landmark
+structure. No component logic is duplicated in the tests.
 
-Everything the site prints comes from [`src/data/shows.ts`](src/data/shows.ts): the
-issue, the ten series with their channels, slots, episode codes, theses and blurbs,
-the journal pieces, the ticker, the frequency marks. Add a show there and it appears in
-Tonight, the Index and (if it has a premiere date) the countdowns.
+## Stack
 
-```
-src/
-├── App.tsx                    page assembly, in anatomy order
-├── index.css                  tokens, type, texture, motifs, components, motion
-├── data/shows.ts              the catalogue — editorial content, not marketing copy
-├── hooks/useReveal.ts         IntersectionObserver reveal (80px threshold, once)
-├── lib/scroll.ts              guarded anchor travel
-└── components/
-    ├── Ticker.tsx  Masthead.tsx  CoverStory.tsx  TestBars.tsx
-    ├── TonightSchedule.tsx  CriticsJournal.tsx  ReturningSoon.tsx
-    └── ShowIndex.tsx  Colophon.tsx  Motifs.tsx
-```
+React 18 · Vite · Tailwind (extended with the Cabinet tokens) · TypeScript · TMDb v3 ·
+Vitest + Testing Library.
 
-## Type
+---
 
-Four families, one job each, loaded from Google Fonts: **Fraunces** (variable,
-`opsz`/`wght`/`SOFT`/`WONK`) for display, **Newsreader** for editorial body, **Inter**
-for UI, **JetBrains Mono** for time. If fonts.googleapis.com is unreachable the page
-falls back to Iowan/Georgia and the system mono stack, and the grid still holds.
+## What we are not
 
-## Accessibility
-
-Focus rings are 2px accent at 3px offset · every row is a real `<a>` and every filter
-a real `<button>` · signal bars expose `aria-label="Rated 4 of 5 — strong signal"` ·
-the ticker is `aria-hidden` with the schedule as its static equivalent · countdown
-numerals announce their final value, not the animation · key art carries descriptive
-alt text · all motion collapses to instant under `prefers-reduced-motion`, and the
-paper grain stays because a static 5.5% overlay is vestibular-safe.
+- Not Netflix, Disney+ or Mubi in look or feel.
+- No purple, no indigo, no AI-gradient backgrounds.
+- No glass morphism, no neumorphism, no pill-shaped buttons.
+- Not everything is centred.
+- Nothing animates for the sake of animating.
+- No emoji as UI icons — a handful appear as editorial marginalia, and that is all.
+- No fake user reviews, no rating bars, no "98% match".

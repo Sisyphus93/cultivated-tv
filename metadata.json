@@ -1,5 +1,5 @@
 {
-  "name": "AIRTIME",
-  "description": "A weekly television guide, set like a printed one: criticism, tonight's dial, countdowns to the returns, and a dense index.",
+  "name": "Cabinet",
+  "description": "A TV series discovery journal — an editorial reading room for finding television worth dwelling on. Powered by TMDb.",
   "requestFramePermissions": []
 }
